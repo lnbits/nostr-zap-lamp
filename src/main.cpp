@@ -61,14 +61,19 @@ void flashLightning(int zapAmountSats) {
   Serial.println("Zap amount: " + String(zapAmountSats) + " sats");
   Serial.println("Flashing " + String(flashCount) + " times");
 
-  int flashDuration = random(10, 150); // Generate random duration for each flash (20 to 100 milliseconds)
-
-  for (int i = 0; i < flashCount; i++) {
+  for(int flash = 1; flash <= flashCount; flash++) {
+    // turn the LED on
     digitalWrite(ledPin, HIGH);
-    delay(flashDuration);
 
-    digitalWrite(ledPin, LOW);
-    delay(random(50, 200));
+    // wait for the specified time, longer for the first flash and shorter for subsequent flashes
+    int flashDuration = 250 / flash * random(1,5);
+    delay(flashDuration / 2);
+
+    // fast fade-out
+    for (int i = 255; i >= 0; i = i - 2) {
+      analogWrite(ledPin, i);  // set the LED brightness
+      delay(1);  // wait for a moment
+    }
   }
 
 }

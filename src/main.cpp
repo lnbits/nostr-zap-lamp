@@ -12,17 +12,20 @@
 #include <math.h>
 #include <SPIFFS.h>
 
-#include "NotoSansBold36.h"
-#define AA_FONT NotoSansBold36
+#include <ArduinoJson.h>
+#include <AutoConnect.h>
+#include <WebServer.h>
+#include "access_point.h"
+
+#define PARAM_FILE "/elements.json"
+
+int triggerAp = false;
 
 int ledPin = 13; // Pin number where the LED is connected
 int buttonPin = 4; // Pin number where the button is connected
 int minFlashDelay = 100; // Minimum delay between flashes (in milliseconds)
 int maxFlashDelay = 5000; // Maximum delay between flashes (in milliseconds)
 int lightBrightness = 50; // The brightness of the LED (0-255)
-
-const char* ssid     = "Maddox Guest"; // wifi SSID here
-const char* password = "MadGuest1"; // wifi password here
 
 NostrEvent nostr;
 NostrRelayManager nostrRelayManager;
@@ -34,8 +37,177 @@ NostrRequestOptions* eventRequestOptions;
 
 bool hasSentEvent = false;
 
-String preimageHex = "";
-String preimageHashHex = "";
+WebServer server;
+AutoConnect portal(server);
+AutoConnectConfig config;
+AutoConnectAux elementsAux;
+AutoConnectAux saveAux;
+String apPassword = "ToTheMoon1"; //default WiFi AP password
+String npubToWatch = "";
+String relay = "relay.damus.io";
+
+fs::SPIFFSFS &FlashFS = SPIFFS;
+#define FORMAT_ON_FAIL true
+
+// define funcs
+void configureAccessPoint();
+void initWiFi();
+bool whileCP(void);
+void changeBrightness();
+void signalWithLightning(int numFlashes, int duration);
+void flashLightning(int zapAmountSats);
+void doLightningFlash(int numberOfFlashes);
+void fadeOutFlash(int intensity);
+void initLamp();
+unsigned long getUnixTimestamp();
+void zapReceiptEvent(const std::string& key, const char* payload);
+void okEvent(const std::string& key, const char* payload);
+void nip01Event(const std::string& key, const char* payload);
+uint8_t getRandomNum(uint8_t min, uint8_t max);
+
+
+void initWiFi() {
+  configureAccessPoint();
+    
+  WiFi.mode(WIFI_STA);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+  }
+
+  signalWithLightning(3,100);
+}
+
+/**
+ * @brief While captive portal callback
+ * 
+ * @return true 
+ * @return false 
+ */
+bool whileCP(void) {
+  bool rc;
+  // light the led full brightness
+  analogWrite(ledPin, 255);
+  rc = true;
+  return rc;
+}
+
+/**
+ * @brief Configure the WiFi AP
+ * 
+ */
+void configureAccessPoint() {
+  // handle access point traffic
+  server.on("/", []() {
+    String content = "<h1>Nostr Zap Lamp</h1>";
+    content += AUTOCONNECT_LINK(COG_24);
+    server.send(200, "text/html", content);
+  });
+
+  elementsAux.load(FPSTR(PAGE_ELEMENTS));
+
+  saveAux.load(FPSTR(PAGE_SAVE));
+  saveAux.on([](AutoConnectAux &aux, PageArgument &arg) {
+    aux["caption"].value = PARAM_FILE;
+    File param = FlashFS.open(PARAM_FILE, "w");
+
+    if (param)
+    {
+        // save as a loadable set for parameters.
+        elementsAux.saveElement(param, {"ap_password", "npub_hex_to_watch", "relay"});
+        param.close();
+
+        // read the saved elements again to display.
+        param = FlashFS.open(PARAM_FILE, "r");
+        aux["echo"].value = param.readString();
+        param.close();
+    }
+    else
+    {
+        aux["echo"].value = "Filesystem failed to open.";
+    }
+    return String();
+  });
+
+  elementsAux.on([](AutoConnectAux &aux, PageArgument &arg) {
+    File param = FlashFS.open(PARAM_FILE, "r");
+    if (param)
+    {
+      aux.loadElement(param, {"ap_password", "npub_hex_to_watch", "relay"});
+      param.close();
+    }
+
+    if (portal.where() == "/settings")
+    {
+      File param = FlashFS.open(PARAM_FILE, "r");
+      if (param)
+      {
+        aux.loadElement(param, {"ap_password", "npub_hex_to_watch", "relay"});
+        param.close();
+      }
+    }
+    return String();
+  });
+
+  config.autoReconnect = true;
+  config.reconnectInterval = 1; // 30s
+  config.beginTimeout = 30000UL;
+
+  config.immediateStart = triggerAp;
+  config.hostName = "ZapLamp";
+  config.apid = "ZapLamp-" + String((uint32_t)ESP.getEfuseMac(), HEX);
+  config.apip = IPAddress(6, 15, 6, 15);      // Sets SoftAP IP address
+  config.gateway = IPAddress(6, 15, 6, 15);     // Sets WLAN router IP address
+  config.psk = apPassword;
+  config.menuItems = AC_MENUITEM_CONFIGNEW | AC_MENUITEM_OPENSSIDS | AC_MENUITEM_RESET;
+  config.title = "Nostr Zap Lamp";
+  config.portalTimeout = 120000;
+
+  portal.whileCaptivePortal(whileCP);
+
+  portal.join({elementsAux, saveAux});
+  portal.config(config);
+
+    // Establish a connection with an autoReconnect option.
+  if (portal.begin()) {
+    Serial.println("WiFi connected: " + WiFi.localIP().toString());
+  }
+}
+
+void loadSettings() {
+    // get the saved details and store in global variables
+  File paramFile = FlashFS.open(PARAM_FILE, "r");
+  if (paramFile)
+  {
+    StaticJsonDocument<1000> doc;
+    DeserializationError error = deserializeJson(doc, paramFile.readString());
+
+    const JsonObject passRoot = doc[0];
+    const char *apPasswordChar = passRoot["value"];
+    const char *apNameChar = passRoot["name"];
+
+    if (String(apPasswordChar) != "" && String(apNameChar) == "ap_password")
+    {
+      apPassword = apPasswordChar;
+    }
+
+    const JsonObject npubToWatchDoc = doc[1];
+    const char *npubToWatchChar = npubToWatchDoc["value"];
+    if (String(npubToWatchChar) != "") {
+        npubToWatch = String(npubToWatchChar);
+    }
+    Serial.println("npub to watch: " + npubToWatch);
+
+    const JsonObject relayDoc = doc[2];
+    const char *relayChar = relayDoc["value"];
+    if (String(relayChar) != "") {
+        relay = String(relayChar);
+    }
+    Serial.println("relay: " + relay);
+
+  }
+
+  paramFile.close();
+}
 
 /**
  * @brief change lamp brightness
@@ -77,7 +249,7 @@ void doLightningFlash(int numberOfFlashes) {
 
   fadeOutFlash(2);
   fadeOutFlash(5);
-  fadeOutFlash(10);
+  // fadeOutFlash(10);
 
   delay(50);
 
@@ -98,7 +270,7 @@ void doLightningFlash(int numberOfFlashes) {
 
   delay(50);
 
-  fadeOutFlash(15);
+  // fadeOutFlash(15);
   fadeOutFlash(5);
 
   delay(50);
@@ -296,6 +468,7 @@ void setup() {
 
   randomSeed(analogRead(0)); // Seed the random number generator
 
+  FlashFS.begin(FORMAT_ON_FAIL);
   // init spiffs
   if(!SPIFFS.begin(true)){
     Serial.println("An Error has occurred while mounting SPIFFS");
@@ -305,20 +478,9 @@ void setup() {
 
   // Set the button pin as INPUT
   pinMode(buttonPin, INPUT_PULLUP);
-  
-  WiFi.begin(ssid, password);
 
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-
-  signalWithLightning(3,100);
-
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
+  initWiFi();
+  loadSettings();
 
   // Create the REQ
   eventRequestOptions = new NostrRequestOptions();
@@ -328,18 +490,19 @@ void setup() {
   eventRequestOptions->kinds_count = sizeof(kinds) / sizeof(kinds[0]);
 
   // // Populate #p
-  // String p[] = {npubHex};
-  // eventRequestOptions->p = p;
-  // eventRequestOptions->p_count = sizeof(p) / sizeof(p[0]);;
+  if(npubToWatch != "") {
+    String* pubkeys = new String[1];  // Allocate memory dynamically
+    pubkeys[0] = npubToWatch;
+    eventRequestOptions->p = pubkeys;
+    eventRequestOptions->p_count = 1;
+  }
 
   eventRequestOptions->limit = 0;
 
   Serial.println("Requesting Zap notifications");
 
   const char *const relays[] = {
-      "relay.damus.io",
-      "nostr.mom",
-      "relay.nostr.bg"
+      relay.c_str()
   };
   int relayCount = sizeof(relays) / sizeof(relays[0]);
   

@@ -10,23 +10,25 @@
 #include <esp_random.h>
 #include "QRCode.h"
 #include <math.h>
-
+#include <SPIFFS.h>
 
 #include "NotoSansBold36.h"
 #define AA_FONT NotoSansBold36
 
 int ledPin = 13; // Pin number where the LED is connected
+int buttonPin = 4; // Pin number where the button is connected
 int minFlashDelay = 100; // Minimum delay between flashes (in milliseconds)
 int maxFlashDelay = 5000; // Maximum delay between flashes (in milliseconds)
+int lightBrightness = 50; // The brightness of the LED (0-255)
 
-const char* ssid     = "wubwub"; // wifi SSID here
-const char* password = "blob19750405blob"; // wifi password here
+const char* ssid     = "Maddox Guest"; // wifi SSID here
+const char* password = "MadGuest1"; // wifi password here
 
 NostrEvent nostr;
 NostrRelayManager nostrRelayManager;
 NostrQueueProcessor nostrQueue;
 
-String serialisedEventRequestOptions;
+String serialisedEventRequest;
 
 NostrRequestOptions* eventRequestOptions;
 
@@ -35,21 +37,74 @@ bool hasSentEvent = false;
 String preimageHex = "";
 String preimageHashHex = "";
 
-void generatePreimageAndPreimageHash() {
-  uint8_t preimage[32];
-  esp_random() % 256;
-  for (int i = 0; i < sizeof(preimage); i++) {
-      preimage[i] = esp_random() % 256;
+/**
+ * @brief change lamp brightness
+ * 
+ */
+void changeBrightness() {
+  lightBrightness = lightBrightness + 20;
+  if (lightBrightness > 255) {
+    lightBrightness = 0;
+  }
+  // write to spiffs
+  File file = SPIFFS.open("/brightness.txt", FILE_WRITE);
+  if(!file){
+    Serial.println("Failed to open file for writing");
+    return;
+  }
+  file.println(lightBrightness);
+  file.close();
+
+  analogWrite(ledPin, lightBrightness);
+  delay(250);
+}
+
+void fadeOutFlash(int intensity) {
+  analogWrite(ledPin, intensity); // set the LED to the desired intensity
+
+  delay(50); // delay to give the LED time to light up
+
+  // fast fade-out
+  for (int i = intensity; i >= 0; i--) {
+    analogWrite(ledPin, i); // set the LED brightness
+    delay(1);  // wait for a moment
   }
 
-  preimageHex = toHex(preimage, 32);
-  Serial.println("Preimage hex: " + preimageHex);
+  delay(50);
+}
 
-  byte preimageHash[32] = { 0 }; // hash
-  int preimageHashLen = 0;
-  preimageHashLen = sha256(preimage, sizeof(preimage), preimageHash);
-  preimageHashHex = toHex(preimageHash, preimageHashLen);
-  Serial.println("Preimage hash hex: " + String(preimageHashHex));
+void doLightningFlash(int numberOfFlashes) {
+
+  fadeOutFlash(2);
+  fadeOutFlash(5);
+  fadeOutFlash(10);
+
+  delay(50);
+
+  for(int flash = 1; flash <= numberOfFlashes; flash++) {
+    // turn the LED on
+    digitalWrite(ledPin, HIGH);
+
+    // wait for the specified time, longer for the first flash and shorter for subsequent flashes
+    int flashDuration = 250 / flash * random(1,5);
+    delay(flashDuration / 2);
+
+    // fast fade-out
+    for (int i = 255; i >= lightBrightness; i = i - 2) {
+      analogWrite(ledPin, i);  // set the LED brightness
+      delay(1);  // wait for a moment
+    }
+  }
+
+  delay(50);
+
+  fadeOutFlash(15);
+  fadeOutFlash(5);
+
+  delay(50);
+
+  // set led to brightness
+  analogWrite(ledPin, lightBrightness);
 }
 
 void flashLightning(int zapAmountSats) {
@@ -61,20 +116,7 @@ void flashLightning(int zapAmountSats) {
   Serial.println("Zap amount: " + String(zapAmountSats) + " sats");
   Serial.println("Flashing " + String(flashCount) + " times");
 
-  for(int flash = 1; flash <= flashCount; flash++) {
-    // turn the LED on
-    digitalWrite(ledPin, HIGH);
-
-    // wait for the specified time, longer for the first flash and shorter for subsequent flashes
-    int flashDuration = 250 / flash * random(1,5);
-    delay(flashDuration / 2);
-
-    // fast fade-out
-    for (int i = 255; i >= 0; i = i - 2) {
-      analogWrite(ledPin, i);  // set the LED brightness
-      delay(1);  // wait for a moment
-    }
-  }
+  doLightningFlash(flashCount);
 
 }
 
@@ -113,9 +155,9 @@ void relayConnectedEvent(const std::string& key, const std::string& message) {
   Serial.println("Relay connected: ");
   
   Serial.print(F("Requesting events:"));
-  Serial.println(serialisedEventRequestOptions);
+  Serial.println(serialisedEventRequest);
 
-  nostrRelayManager.broadcastEvent(serialisedEventRequestOptions);
+  nostrRelayManager.broadcastEvent(serialisedEventRequest);
 }
 
 void okEvent(const std::string& key, const char* payload) {
@@ -230,11 +272,39 @@ void zapReceiptEvent(const std::string& key, const char* payload) {
     }
 }
 
+void initLamp() {
+
+  // get brightness value from spiffs brightness.txt
+  File file = SPIFFS.open("/brightness.txt");
+  if(!file){
+    Serial.println("Failed to open file for reading");
+    return;
+  }
+  String brightnessStr = file.readStringUntil('\n');
+  file.close();
+  lightBrightness = brightnessStr.toInt();
+
+  // Set the LED pin as OUTPUT
+  pinMode(ledPin, OUTPUT);
+
+  // Set the LED to the desired intensity
+  analogWrite(ledPin, lightBrightness);
+}
+
 void setup() {
   Serial.begin(115200);
 
-  pinMode(ledPin, OUTPUT); // Set the LED pin as OUTPUT
   randomSeed(analogRead(0)); // Seed the random number generator
+
+  // init spiffs
+  if(!SPIFFS.begin(true)){
+    Serial.println("An Error has occurred while mounting SPIFFS");
+    return;
+  }
+  initLamp();
+
+  // Set the button pin as INPUT
+  pinMode(buttonPin, INPUT_PULLUP);
   
   WiFi.begin(ssid, password);
 
@@ -284,15 +354,17 @@ void setup() {
 
   nostrRelayManager.connect();
   
-  // nostrRelayManager.requestEvents(eventRequestOptions);
-
   // We store this here for sending this request again if a socket reconnects
-  serialisedEventRequestOptions = "[\"REQ\", \"" + nostrRelayManager.getNewSubscriptionId() + "\"," + eventRequestOptions->toJson() + "]";
+  serialisedEventRequest = "[\"REQ\", \"" + nostrRelayManager.getNewSubscriptionId() + "\"," + eventRequestOptions->toJson() + "]";
 
   delete eventRequestOptions;
 }
 
 void loop() {
   nostrRelayManager.loop();
-  nostrRelayManager.broadcastEvents();
+
+  // watch for button press and call changeBrightness
+  if (digitalRead(buttonPin) == LOW) {
+    changeBrightness();
+  }
 }

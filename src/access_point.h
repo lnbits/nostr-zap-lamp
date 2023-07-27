@@ -27,7 +27,7 @@ static const char PAGE_ELEMENTS[] PROGMEM = R"(
       "type": "ACInput",
       "label": "Nostr relay to use",
       "name": "relay",
-      "value": "relay.damus.io"
+      "value": "legend.lnbits.com/nostrclient/api/v1/relay"
     },
     {
       "name": "save",

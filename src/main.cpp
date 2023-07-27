@@ -228,16 +228,18 @@ bool adjustLightingBrightnessUp = true;
 void changeBrightness() {
   // use lastLightingAdjustmentWasUp and max value of 255 to decide whether to adjust up or down
   if (adjustLightingBrightnessUp) {
-    lightBrightness = lightBrightness + 20;
+    lightBrightness = lightBrightness + 5;
     if (lightBrightness >= 255) {
       lightBrightness = 255;
       adjustLightingBrightnessUp = false;
+      delay(500); // pause to let the user take their finger off the button
     }
   } else {
-    lightBrightness = lightBrightness - 20;
+    lightBrightness = lightBrightness - 5;
     if (lightBrightness <= 0) {
       lightBrightness = 0;
       adjustLightingBrightnessUp = true;
+      delay(500); // pause to let the user take their finger off the button
     }
   }
   
@@ -251,7 +253,7 @@ void changeBrightness() {
   file.close();
 
   analogWrite(ledPin, lightBrightness);
-  delay(250);
+  // delay(250);
 }
 
 void fadeOutFlash(int intensity) {
@@ -529,9 +531,8 @@ void setup() {
   Serial.println("Requesting Zap notifications");
 
   const char *const relays[] = {
-      // relay.c_str(),
-      "relay.nostr.bg",
-      // "nostr-pub.wellorder.net",
+      relay.c_str(),
+      "nostr.wine",
   };
   int relayCount = sizeof(relays) / sizeof(relays[0]);
   

@@ -217,7 +217,16 @@ void NostrRelayManager::printRelay(int index) const {
 void NostrRelayManager::connect(std::function<void(WStype_t, uint8_t*, size_t)> callback) {
     // Initialize WebSocket connections
     for (int i = 0; i < relay_count; i++) {
-        _webSocketClients[i].beginSSL(relays[i], 443);
+        // if the relay includes a "/" split on the first / and use the first part as the host and the second part as the path
+        if(String(relays[i]).indexOf("/") > 0) {
+            String host = String(relays[i]).substring(0, String(relays[i]).indexOf("/"));
+            String path = String(relays[i]).substring(String(relays[i]).indexOf("/"));
+            Serial.println("Connecting to relay: " + host + " with path: " + path);
+            _webSocketClients[i].beginSSL(host, 443, path);
+        } else {
+            Serial.println("Connecting to relay: " + String(relays[i]));
+            _webSocketClients[i].beginSSL(relays[i], 443);
+        }
         _webSocketClients[i].setReconnectInterval(5000);
         _webSocketClients[i].onEvent([this, callback, i](WStype_t type, uint8_t* payload, size_t length) {
             this->_webSocketEvent(type, payload, length, i);

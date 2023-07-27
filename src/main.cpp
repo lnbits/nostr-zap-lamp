@@ -220,15 +220,27 @@ void loadSettings() {
   paramFile.close();
 }
 
+bool adjustLightingBrightnessUp = true;
 /**
  * @brief change lamp brightness
  * 
  */
 void changeBrightness() {
-  lightBrightness = lightBrightness + 20;
-  if (lightBrightness > 255) {
-    lightBrightness = 0;
+  // use lastLightingAdjustmentWasUp and max value of 255 to decide whether to adjust up or down
+  if (adjustLightingBrightnessUp) {
+    lightBrightness = lightBrightness + 20;
+    if (lightBrightness >= 255) {
+      lightBrightness = 255;
+      adjustLightingBrightnessUp = false;
+    }
+  } else {
+    lightBrightness = lightBrightness - 20;
+    if (lightBrightness <= 0) {
+      lightBrightness = 0;
+      adjustLightingBrightnessUp = true;
+    }
   }
+  
   // write to spiffs
   File file = SPIFFS.open("/brightness.txt", FILE_WRITE);
   if(!file){
@@ -476,6 +488,9 @@ void initLamp() {
 
 void setup() {
   Serial.begin(115200);
+
+  delay(1000);
+  signalWithLightning(2,250);
 
   randomSeed(analogRead(0)); // Seed the random number generator
 

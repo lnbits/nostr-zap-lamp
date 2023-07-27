@@ -514,7 +514,9 @@ void setup() {
   Serial.println("Requesting Zap notifications");
 
   const char *const relays[] = {
-      relay.c_str()
+      relay.c_str(),
+      "relay.nostr.bg",
+      "nostr-pub.wellorder.net",
   };
   int relayCount = sizeof(relays) / sizeof(relays[0]);
   

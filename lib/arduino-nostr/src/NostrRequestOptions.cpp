@@ -41,7 +41,7 @@ NostrRequestOptions::NostrRequestOptions()
  * @return String 
  */
 String NostrRequestOptions::toJson() const {
-  StaticJsonDocument<2048> json;
+  StaticJsonDocument<1024> json;
 
   if (ids) {
     JsonArray idsArray = json.createNestedArray("ids");

@@ -1,5 +1,7 @@
 # Nostr Zap Lamp
 
+![](img/lamp.jpg)
+
 Get a visual Zap! when someone zaps your or anyone on Nostr. 
 
 The Nostr Zap Lamp flashes when a relay broadcasts a Nostr event of kind 9735. You can set the lamp to flash zaps sent to a specific npub, or any npub on nostr.

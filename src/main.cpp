@@ -353,7 +353,7 @@ void doLightningFlash(int numberOfFlashes) {
   fadeOutFlash(10);
   fadeOutFlash(15);
 
-  delay(50);
+  delay(100);
 
   for(int flash = 1; flash <= numberOfFlashes; flash++) {
     // turn the LED on
@@ -372,8 +372,8 @@ void doLightningFlash(int numberOfFlashes) {
 
   delay(50);
 
-  fadeOutFlash(15);
-  fadeOutFlash(5);
+  // fadeOutFlash(15);
+  // fadeOutFlash(5);
 
   delay(50);
 
@@ -536,6 +536,7 @@ uint8_t getRandomNum(uint8_t min, uint8_t max) {
 }
 
 void zapReceiptEvent(const std::string& key, const char* payload) {
+  Serial.println("Zap receipt event");
     if(lastPayload != payload) { // Prevent duplicate events from multiple relays triggering the same logic, as we are using multiple relays, this is likely to happen
       lastPayload = payload;
       String bolt11 = getBolt11InvoiceFromEvent(payload);

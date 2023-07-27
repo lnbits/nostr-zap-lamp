@@ -468,6 +468,8 @@ void zapReceiptEvent(const std::string& key, const char* payload) {
 }
 
 void initLamp() {
+  // Set the LED pin as OUTPUT
+  pinMode(ledPin, OUTPUT);
 
   // get brightness value from spiffs brightness.txt
   File file = SPIFFS.open("/brightness.txt");
@@ -478,19 +480,10 @@ void initLamp() {
   String brightnessStr = file.readStringUntil('\n');
   file.close();
   lightBrightness = brightnessStr.toInt();
-
-  // Set the LED pin as OUTPUT
-  pinMode(ledPin, OUTPUT);
-
-  // Set the LED to the desired intensity
-  analogWrite(ledPin, lightBrightness);
 }
 
 void setup() {
   Serial.begin(115200);
-
-  delay(1000);
-  signalWithLightning(2,250);
 
   randomSeed(analogRead(0)); // Seed the random number generator
 
@@ -500,7 +493,11 @@ void setup() {
     Serial.println("An Error has occurred while mounting SPIFFS");
     return;
   }
+
   initLamp();
+
+  delay(2000);
+  signalWithLightning(2,250);
 
   // Set the button pin as INPUT
   pinMode(buttonPin, INPUT_PULLUP);
@@ -508,6 +505,9 @@ void setup() {
   initWiFi();
   
   loadSettings();
+
+  // Set the LED to the desired intensity
+  analogWrite(ledPin, lightBrightness);
 
   // Create the REQ
   eventRequestOptions = new NostrRequestOptions();
@@ -529,9 +529,9 @@ void setup() {
   Serial.println("Requesting Zap notifications");
 
   const char *const relays[] = {
-      relay.c_str(),
+      // relay.c_str(),
       "relay.nostr.bg",
-      "nostr-pub.wellorder.net",
+      // "nostr-pub.wellorder.net",
   };
   int relayCount = sizeof(relays) / sizeof(relays[0]);
   

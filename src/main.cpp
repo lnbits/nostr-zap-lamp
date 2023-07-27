@@ -64,7 +64,82 @@ void zapReceiptEvent(const std::string& key, const char* payload);
 void okEvent(const std::string& key, const char* payload);
 void nip01Event(const std::string& key, const char* payload);
 uint8_t getRandomNum(uint8_t min, uint8_t max);
+void relayConnectedEvent(const std::string& key, const std::string& message);
+void loadSettings();
+int64_t getAmountInSatoshis(const String &input);
+String getBolt11InvoiceFromEvent(String jsonStr);
+void createZapEventRequest();
+void connectToNostrRelays();
 
+
+/**
+ * @brief Create a Zap Event Request object
+ * 
+ */
+void createZapEventRequest() {
+  // Create the REQ
+  eventRequestOptions = new NostrRequestOptions();
+  // Populate kinds
+  int kinds[] = {9735};
+  eventRequestOptions->kinds = kinds;
+  eventRequestOptions->kinds_count = sizeof(kinds) / sizeof(kinds[0]);
+
+  // // Populate #p
+  if(npubToWatch != "") {
+    String* pubkeys = new String[1];  // Allocate memory dynamically
+    pubkeys[0] = npubToWatch;
+    eventRequestOptions->p = pubkeys;
+    eventRequestOptions->p_count = 1;
+  }
+
+  eventRequestOptions->limit = 0;
+
+  // We store this here for sending this request again if a socket reconnects
+  serialisedEventRequest = "[\"REQ\", \"" + nostrRelayManager.getNewSubscriptionId() + "\"," + eventRequestOptions->toJson() + "]";
+
+  delete eventRequestOptions;
+}
+
+/**
+ * @brief Connect to the Nostr relays
+ * 
+ */
+void connectToNostrRelays() {
+  Serial.println("Requesting Zap notifications");
+
+      const char *const relays[] = {
+          relay.c_str(),
+          "nostr.wine",
+      };
+      int relayCount = sizeof(relays) / sizeof(relays[0]);
+      
+      nostr.setLogging(false);
+      nostrRelayManager.setRelays(relays, relayCount);
+      nostrRelayManager.setMinRelaysAndTimeout(1,10000);
+
+      // Set some event specific callbacks here
+      nostrRelayManager.setEventCallback("ok", okEvent);
+      nostrRelayManager.setEventCallback("connected", relayConnectedEvent);
+      nostrRelayManager.setEventCallback(9735, zapReceiptEvent);
+
+      nostrRelayManager.connect();
+}
+
+// Define the WiFi event callback function
+void WiFiEvent(WiFiEvent_t event) {
+  switch(event) {
+    case SYSTEM_EVENT_STA_GOT_IP:
+      Serial.println("Connected to WiFi and got an IP");
+      
+      connectToNostrRelays();      
+      
+      break;
+    case SYSTEM_EVENT_STA_DISCONNECTED:
+      Serial.println("Disconnected from WiFi");
+      // WiFi.begin(ssid, password); // Try to reconnect after getting disconnected
+      break;
+  }
+}
 
 void initWiFi() {
   int buttonState = digitalRead(buttonPin);
@@ -76,6 +151,8 @@ void initWiFi() {
   } else {
     Serial.println("Button state is low. Dont auto-launch portal.");
   }
+
+  WiFi.onEvent(WiFiEvent);
 
   configureAccessPoint();
     
@@ -272,9 +349,9 @@ void fadeOutFlash(int intensity) {
 
 void doLightningFlash(int numberOfFlashes) {
 
-  fadeOutFlash(2);
   fadeOutFlash(5);
-  // fadeOutFlash(10);
+  fadeOutFlash(10);
+  fadeOutFlash(15);
 
   delay(50);
 
@@ -295,7 +372,7 @@ void doLightningFlash(int numberOfFlashes) {
 
   delay(50);
 
-  // fadeOutFlash(15);
+  fadeOutFlash(15);
   fadeOutFlash(5);
 
   delay(50);
@@ -511,46 +588,7 @@ void setup() {
   // Set the LED to the desired intensity
   analogWrite(ledPin, lightBrightness);
 
-  // Create the REQ
-  eventRequestOptions = new NostrRequestOptions();
-  // Populate kinds
-  int kinds[] = {9735};
-  eventRequestOptions->kinds = kinds;
-  eventRequestOptions->kinds_count = sizeof(kinds) / sizeof(kinds[0]);
-
-  // // Populate #p
-  if(npubToWatch != "") {
-    String* pubkeys = new String[1];  // Allocate memory dynamically
-    pubkeys[0] = npubToWatch;
-    eventRequestOptions->p = pubkeys;
-    eventRequestOptions->p_count = 1;
-  }
-
-  eventRequestOptions->limit = 0;
-
-  Serial.println("Requesting Zap notifications");
-
-  const char *const relays[] = {
-      relay.c_str(),
-      "nostr.wine",
-  };
-  int relayCount = sizeof(relays) / sizeof(relays[0]);
-  
-  nostr.setLogging(false);
-  nostrRelayManager.setRelays(relays, relayCount);
-  nostrRelayManager.setMinRelaysAndTimeout(1,10000);
-
-  // Set some event specific callbacks here
-  nostrRelayManager.setEventCallback("ok", okEvent);
-  nostrRelayManager.setEventCallback("connected", relayConnectedEvent);
-  nostrRelayManager.setEventCallback(9735, zapReceiptEvent);
-
-  nostrRelayManager.connect();
-  
-  // We store this here for sending this request again if a socket reconnects
-  serialisedEventRequest = "[\"REQ\", \"" + nostrRelayManager.getNewSubscriptionId() + "\"," + eventRequestOptions->toJson() + "]";
-
-  delete eventRequestOptions;
+  createZapEventRequest();
 }
 
 void loop() {

@@ -67,6 +67,16 @@ uint8_t getRandomNum(uint8_t min, uint8_t max);
 
 
 void initWiFi() {
+  int buttonState = digitalRead(buttonPin);
+  Serial.println(F("button pin value is"));
+  Serial.println(buttonState);
+  if (buttonState != HIGH) {
+      Serial.println("Launch portal");
+      triggerAp = true;
+  } else {
+    Serial.println("Button state is low. Dont auto-launch portal.");
+  }
+
   configureAccessPoint();
     
   WiFi.mode(WIFI_STA);
@@ -152,11 +162,12 @@ void configureAccessPoint() {
   config.reconnectInterval = 1; // 30s
   config.beginTimeout = 30000UL;
 
+  Serial.println("Trigger AP: " + String(triggerAp));
   config.immediateStart = triggerAp;
   config.hostName = "ZapLamp";
   config.apid = "ZapLamp-" + String((uint32_t)ESP.getEfuseMac(), HEX);
-  config.apip = IPAddress(6, 15, 6, 15);      // Sets SoftAP IP address
-  config.gateway = IPAddress(6, 15, 6, 15);     // Sets WLAN router IP address
+  config.apip = IPAddress(21, 1, 16, 19);      // Sets SoftAP IP address
+  config.gateway = IPAddress(21, 1, 16, 19);     // Sets WLAN router IP address
   config.psk = apPassword;
   config.menuItems = AC_MENUITEM_CONFIGNEW | AC_MENUITEM_OPENSSIDS | AC_MENUITEM_RESET;
   config.title = "Nostr Zap Lamp";
@@ -480,6 +491,7 @@ void setup() {
   pinMode(buttonPin, INPUT_PULLUP);
 
   initWiFi();
+  
   loadSettings();
 
   // Create the REQ

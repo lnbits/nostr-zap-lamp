@@ -530,6 +530,7 @@ void setup() {
    init_WifiManager();
 
    if(hasInternetConnection) {
+    Serial.println("Has internet connection. Connectring to relays");
     connectToNostrRelays();
    }
 

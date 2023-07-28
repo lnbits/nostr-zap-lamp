@@ -17,6 +17,10 @@
 #include <WebServer.h>
 #include "access_point.h"
 
+// freertos
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
 #define PARAM_FILE "/elements.json"
 
 int triggerAp = false;
@@ -27,11 +31,16 @@ int minFlashDelay = 100; // Minimum delay between flashes (in milliseconds)
 int maxFlashDelay = 5000; // Maximum delay between flashes (in milliseconds)
 int lightBrightness = 50; // The brightness of the LED (0-255)
 
+// create a vector for storing zap amount for the flash queue
+std::vector<int> zapAmountsFlashQueue;
+
 NostrEvent nostr;
 NostrRelayManager nostrRelayManager;
 NostrQueueProcessor nostrQueue;
 
 String serialisedEventRequest;
+
+bool hasInternetConnection = false;
 
 NostrRequestOptions* eventRequestOptions;
 
@@ -71,6 +80,62 @@ String getBolt11InvoiceFromEvent(String jsonStr);
 void createZapEventRequest();
 void connectToNostrRelays();
 
+#define BUTTON_PIN 0 // change this to the pin your button is connected to
+#define DOUBLE_TAP_DELAY 250 // delay for double tap in milliseconds
+
+volatile unsigned long lastButtonPress = 0;
+volatile bool doubleTapDetected = false;
+
+void IRAM_ATTR handleButtonInterrupt() {
+  unsigned long now = millis();
+  if (now - lastButtonPress < DOUBLE_TAP_DELAY) {
+    doubleTapDetected = true;
+  }
+  lastButtonPress = now;
+}
+
+//free rtos task for lamp control
+void lampControlTask(void *pvParameters) {
+  Serial.println("Starting lamp control task");
+  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), handleButtonInterrupt, FALLING);
+
+  while(!hasInternetConnection) {
+    // slow fade pulse of LED
+    for (int i = 100; i < 255; i++) {
+      analogWrite(ledPin, i); // set the LED to the desired intensity
+      delay(2);  // wait for a moment
+    }
+    // now fade out
+    for (int i = 255; i >= 100; i--) {
+      analogWrite(ledPin, i); // set the LED brightness
+      delay(2);  // wait for a moment
+    }
+  }
+
+  for(;;) {
+    // detect double tap on button 
+    if (doubleTapDetected) {
+      // restart device
+      ESP.restart();
+    }
+
+    Serial.println("In the lamp freertos task loop");
+    // watch for button press and call changeBrightness
+    if (digitalRead(buttonPin) == LOW) {
+      changeBrightness();
+    }
+
+    // watch for lamp state and do as needed
+    if (zapAmountsFlashQueue.size() > 0) {
+      Serial.println("Zap amount in queue " + String(zapAmountsFlashQueue[0]));
+      int zapAmount = zapAmountsFlashQueue[0];
+      zapAmountsFlashQueue.erase(zapAmountsFlashQueue.begin());
+      doLightningFlash(zapAmount);
+      vTaskDelay(500 / portTICK_PERIOD_MS);
+    }
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+  }
+}
 
 /**
  * @brief Create a Zap Event Request object
@@ -130,12 +195,12 @@ void WiFiEvent(WiFiEvent_t event) {
   switch(event) {
     case SYSTEM_EVENT_STA_GOT_IP:
       Serial.println("Connected to WiFi and got an IP");
-      
+      hasInternetConnection = true;
       connectToNostrRelays();      
-      
       break;
     case SYSTEM_EVENT_STA_DISCONNECTED:
       Serial.println("Disconnected from WiFi");
+      hasInternetConnection = false;
       // WiFi.begin(ssid, password); // Try to reconnect after getting disconnected
       break;
   }
@@ -390,8 +455,8 @@ void flashLightning(int zapAmountSats) {
   Serial.println("Zap amount: " + String(zapAmountSats) + " sats");
   Serial.println("Flashing " + String(flashCount) + " times");
 
-  doLightningFlash(flashCount);
-
+  // push to the flash queue
+  zapAmountsFlashQueue.push_back(zapAmountSats);
 }
 
 /**
@@ -582,6 +647,16 @@ void setup() {
   // Set the button pin as INPUT
   pinMode(buttonPin, INPUT_PULLUP);
 
+    // start lamp control task
+  xTaskCreatePinnedToCore(
+    lampControlTask,   /* Task function. */
+    "lampControlTask",     /* String with name of task. */
+    1000,            /* Stack size in bytes. */
+    NULL,             /* Parameter passed as input of the task */
+    1,                /* Priority of the task. */
+    NULL,             /* Task handle. */
+    1);               /* Core where the task should run */
+
   initWiFi();
   
   loadSettings();
@@ -594,9 +669,4 @@ void setup() {
 
 void loop() {
   nostrRelayManager.loop();
-
-  // watch for button press and call changeBrightness
-  if (digitalRead(buttonPin) == LOW) {
-    changeBrightness();
-  }
 }

@@ -498,7 +498,6 @@ void initLamp() {
 
 void setup() {
   buttonPin = 4;
-  hasInternetConnection = false;
   Serial.begin(115200);
 
   // randomSeed(analogRead(0)); // Seed the random number generator
@@ -529,6 +528,10 @@ void setup() {
     1);               /* Core where the task should run */
 
    init_WifiManager();
+
+   if(hasInternetConnection) {
+    connectToNostrRelays();
+   }
 
   // Set the LED to the desired intensity
   analogWrite(ledPin, 20);

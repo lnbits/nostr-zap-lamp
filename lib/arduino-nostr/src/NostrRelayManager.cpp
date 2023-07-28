@@ -89,13 +89,20 @@ void NostrRelayManager::setRelays(const char *const new_relays[], int size) {
     relay_count = size;
 }
 
+long lastClientPing = millis();
 /**
 * @brief Keep all relays active
 * 
 */
 void NostrRelayManager::loop() {
-    for (int i = 0; i < relay_count; i++) {
-        _webSocketClients[i].loop();
+    // only ping the relays every 10 seconds
+    if (millis() - lastClientPing > 10000) {
+        for (int i = 0; i < relay_count; i++) {
+            if(_webSocketClients[i].isConnected()) {
+                _webSocketClients[i].loop();
+            }
+        }
+        lastClientPing = millis();
     }
 }
 

@@ -99,20 +99,22 @@ void lampControlTask(void *pvParameters) {
   Serial.println("Starting lamp control task");
   attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), handleButtonInterrupt, FALLING);
 
-  while(!hasInternetConnection) {
+  for(;;) {
+    Serial.println("In the lamp freertos task loop");
+
+    if(!hasInternetConnection) {
     // slow fade pulse of LED
     for (int i = 100; i < 255; i++) {
       analogWrite(ledPin, i); // set the LED to the desired intensity
-      delay(2);  // wait for a moment
+      delay(5);  // wait for a moment
     }
     // now fade out
     for (int i = 255; i >= 100; i--) {
-      analogWrite(ledPin, i); // set the LED brightness
-      delay(2);  // wait for a moment
+      analogWrite(ledPin, i); // set the LED bright ness
+      delay(5);  // wait for a moment
     }
   }
 
-  for(;;) {
     // detect double tap on button 
     if (doubleTapDetected) {
       // restart device
@@ -193,6 +195,12 @@ void connectToNostrRelays() {
 // Define the WiFi event callback function
 void WiFiEvent(WiFiEvent_t event) {
   switch(event) {
+    // failed connection
+    case WIFI_REASON_ASSOC_EXPIRE:
+      // try and connect to the WiFi again
+      if (portal.begin()) {
+        Serial.println("WiFi connected: " + WiFi.localIP().toString());
+      }
     case SYSTEM_EVENT_STA_GOT_IP:
       Serial.println("Connected to WiFi and got an IP");
       hasInternetConnection = true;
@@ -651,9 +659,9 @@ void setup() {
   xTaskCreatePinnedToCore(
     lampControlTask,   /* Task function. */
     "lampControlTask",     /* String with name of task. */
-    1000,            /* Stack size in bytes. */
+    5000,            /* Stack size in bytes. */
     NULL,             /* Parameter passed as input of the task */
-    1,                /* Priority of the task. */
+    2,                /* Priority of the task. */
     NULL,             /* Task handle. */
     1);               /* Core where the task should run */
 

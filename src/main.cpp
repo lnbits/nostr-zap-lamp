@@ -101,29 +101,31 @@ void lampControlTask(void *pvParameters) {
 
   for(;;) {
     Serial.println("In the lamp freertos task loop");
+    Serial.println("Has internet connection: " + String(hasInternetConnection));
 
     if(!hasInternetConnection) {
     // slow fade pulse of LED
     for (int i = 100; i < 255; i++) {
       analogWrite(ledPin, i); // set the LED to the desired intensity
-      delay(5);  // wait for a moment
+      delay(10);  // wait for a moment
     }
     // now fade out
     for (int i = 255; i >= 100; i--) {
       analogWrite(ledPin, i); // set the LED bright ness
-      delay(5);  // wait for a moment
+      delay(10);  // wait for a moment
     }
   }
 
     // detect double tap on button 
     if (doubleTapDetected) {
+      Serial.println("Double tap detected. REstarting");
       // restart device
       ESP.restart();
     }
 
-    Serial.println("In the lamp freertos task loop");
     // watch for button press and call changeBrightness
     if (digitalRead(buttonPin) == LOW) {
+      Serial.println("Button pressed. Changing brightness");
       changeBrightness();
     }
 
@@ -229,10 +231,10 @@ void initWiFi() {
 
   configureAccessPoint();
     
-  WiFi.mode(WIFI_STA);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-  }
+  // WiFi.mode(WIFI_STA);
+  // while (WiFi.status() != WL_CONNECTED) {
+  //   delay(1000);
+  // }
 
   signalWithLightning(3,100);
 }
@@ -331,6 +333,7 @@ void configureAccessPoint() {
     // Establish a connection with an autoReconnect option.
   if (portal.begin()) {
     Serial.println("WiFi connected: " + WiFi.localIP().toString());
+    hasInternetConnection = true;
   }
 }
 
@@ -676,5 +679,6 @@ void setup() {
 }
 
 void loop() {
+  Serial.println("In the main loop");
   nostrRelayManager.loop();
 }

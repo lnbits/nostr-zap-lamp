@@ -139,7 +139,8 @@ void init_WifiManager()
   // Change to true when testing to force configuration every time we run
   bool forceConfig = false;
   // Check if button is pressed to enter configMode with actual configuration
-  if(digitalRead(buttonPin) == HIGH){
+  if(digitalRead(buttonPin) == LOW){
+    Serial.println(F("Forcing config mode"));
     forceConfig = true;
     wm.setBreakAfterConfig(true); //Set to detect config edition and save
  }

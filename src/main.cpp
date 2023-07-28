@@ -164,7 +164,9 @@ void createZapEventRequest() {
   eventRequestOptions->kinds_count = sizeof(kinds) / sizeof(kinds[0]);
 
   // // Populate #p
-  if(npubHexString != "") {
+  Serial.println("npubHexString is |" + String(npubHexString) + "|");
+  if(String(npubHexString) != "") {
+    Serial.println("npub is specified");
     String* pubkeys = new String[1];  // Allocate memory dynamically
     pubkeys[0] = npubHexString;
     eventRequestOptions->p = pubkeys;
@@ -192,15 +194,17 @@ void connectToNostrRelays() {
       };
       int relayCount = sizeof(relays) / sizeof(relays[0]);
       
-      nostr.setLogging(false);
+      nostr.setLogging(true);
       nostrRelayManager.setRelays(relays, relayCount);
       nostrRelayManager.setMinRelaysAndTimeout(1,10000);
 
       // Set some event specific callbacks here
+      Serial.println("Setting callbacks");
       nostrRelayManager.setEventCallback("ok", okEvent);
       nostrRelayManager.setEventCallback("connected", relayConnectedEvent);
       nostrRelayManager.setEventCallback(9735, zapReceiptEvent);
 
+      Serial.println("connecting");
       nostrRelayManager.connect();
 }
 
@@ -516,7 +520,7 @@ void setup() {
   // Set the button pin as INPUT
   pinMode(buttonPin, INPUT_PULLUP);
 
-  // randomSeed(analogRead(0)); // Seed the random number generator
+  randomSeed(analogRead(0)); // Seed the random number generator
 
   FlashFS.begin(FORMAT_ON_FAIL);
   // init spiffs
@@ -527,7 +531,7 @@ void setup() {
 
   initLamp();
 
-  delay(2000);
+  delay(1000);
   signalWithLightning(2,250);
 
     // start lamp control task
@@ -543,17 +547,21 @@ void setup() {
     WiFi.onEvent(WiFiEvent);
    init_WifiManager();
 
+  createZapEventRequest();
+
    if(hasInternetConnection) {
     Serial.println("Has internet connection. Connectring to relays");
     connectToNostrRelays();
    }
 
   // Set the LED to the desired intensity
-  analogWrite(ledPin, 20);
+  analogWrite(ledPin, lightBrightness);
 
-  createZapEventRequest();
 }
 
 void loop() {
   nostrRelayManager.loop();
+  nostrRelayManager.broadcastEvents();
+  // Serial.println("In the main loop");
+  // delay(1000);
 }

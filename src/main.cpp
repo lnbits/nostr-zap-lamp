@@ -90,6 +90,19 @@ void IRAM_ATTR handleButtonInterrupt() {
   lastButtonPress = now;
 }
 
+// Define the WiFi event callback function
+void WiFiEvent(WiFiEvent_t event) {
+  switch(event) {
+    case SYSTEM_EVENT_STA_GOT_IP:
+      Serial.println("Connected to WiFi and got an IP");
+      connectToNostrRelays();      
+      break;
+    case SYSTEM_EVENT_STA_DISCONNECTED:
+      Serial.println("Disconnected from WiFi");
+      // WiFi.begin(ssid, password); // Try to reconnect after getting disconnected
+      break;
+  }
+}
 
 //free rtos task for lamp control
 void lampControlTask(void *pvParameters) {
@@ -497,8 +510,11 @@ void initLamp() {
 }
 
 void setup() {
-  buttonPin = 4;
   Serial.begin(115200);
+
+  buttonPin = 4;
+  // Set the button pin as INPUT
+  pinMode(buttonPin, INPUT_PULLUP);
 
   // randomSeed(analogRead(0)); // Seed the random number generator
 
@@ -514,9 +530,6 @@ void setup() {
   delay(2000);
   signalWithLightning(2,250);
 
-  // Set the button pin as INPUT
-  pinMode(buttonPin, INPUT_PULLUP);
-
     // start lamp control task
   xTaskCreatePinnedToCore(
     lampControlTask,   /* Task function. */
@@ -527,6 +540,7 @@ void setup() {
     NULL,             /* Task handle. */
     1);               /* Core where the task should run */
 
+    WiFi.onEvent(WiFiEvent);
    init_WifiManager();
 
    if(hasInternetConnection) {

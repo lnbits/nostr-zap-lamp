@@ -7,6 +7,7 @@
 #include <NostrEvent.h>
 #include <WebSocketsClient.h>
 #include "ArduinoJson.h"
+#include <vector>
 
 /**
  * @brief Construct a new Nostr Relay Manager:: Nostr Relay Manager object
@@ -15,7 +16,8 @@
 NostrRelayManager::NostrRelayManager() : 
     lastBroadcastAttempt(0),
     minRelaysTimeout(15000),
-    minRelays(1) {
+    minRelays(1),
+    relays(std::vector<String>()) {
 }
 
 /**
@@ -84,9 +86,8 @@ void NostrRelayManager::requestEvents(const NostrRequestOptions* options) {
  * @param new_relays 
  * @param size 
  */
-void NostrRelayManager::setRelays(const char *const new_relays[], int size) {
-    relays = new_relays;
-    relay_count = size;
+void NostrRelayManager::setRelays(const std::vector<String>& new_relays) {
+    relays.assign(new_relays.begin(), new_relays.end());
 }
 
 /**
@@ -94,7 +95,7 @@ void NostrRelayManager::setRelays(const char *const new_relays[], int size) {
 * 
 */
 void NostrRelayManager::loop() {
-    for (int i = 0; i < relay_count; i++) {
+    for (int i = 0; i < relays.size(); i++) {
         _webSocketClients[i].loop();
     }
 }
@@ -107,12 +108,12 @@ void NostrRelayManager::loop() {
  */
 void NostrRelayManager::broadcastEventToRelay(String serializedEventJson, String relayUrl) {
     Serial.println("Broadcasting event  " + serializedEventJson);
-    for (int i = 0; i < relay_count; i++) {
+    for (int i = 0; i < relays.size(); i++) {
         _webSocketClients[i].sendTXT(serializedEventJson);
         // delay(1000);
     }
 
-    // for (int i = 0; i < relay_count; i++) {
+    // for (int i = 0; i < relays.size(); i++) {
     //     // compare the websocket client url to relayUrl
     //     if (_webSocketClients[i].url == relayUrl) {
     //         Serial.println("Found relay. Sending event to relay: " + String(relays[i]));
@@ -175,7 +176,7 @@ void NostrRelayManager::broadcastEvents() {
  */
 int NostrRelayManager::connectedRelayCount() {
     int count = 0;
-    for (int i = 0; i < relay_count; i++) {
+    for (int i = 0; i < relays.size(); i++) {
         if (_webSocketClients[i].isConnected()) {
             count++;
         }
@@ -202,7 +203,7 @@ void NostrRelayManager::setMinRelaysAndTimeout(int minRelays, unsigned long minR
  * @param index 
  */
 void NostrRelayManager::printRelay(int index) const {
-    if (index >= 0 && index < relay_count) {
+    if (index >= 0 && index < relays.size()) {
         Serial.println("Relay is " + String(relays[index]));
     } else {
         Serial.println("Invalid index.");
@@ -216,7 +217,12 @@ void NostrRelayManager::printRelay(int index) const {
  */
 void NostrRelayManager::connect(std::function<void(WStype_t, uint8_t*, size_t)> callback) {
     // Initialize WebSocket connections
-    for (int i = 0; i < relay_count; i++) {
+    // serial print all relays
+    Serial.println("Relays are:");
+    for (int i = 0; i < relays.size(); i++) {
+        Serial.println(relays[i]);
+    }
+    for (int i = 0; i < relays.size(); i++) {
         // if the relay includes a "/" split on the first / and use the first part as the host and the second part as the path
         if(String(relays[i]).indexOf("/") > 0) {
             String host = String(relays[i]).substring(0, String(relays[i]).indexOf("/"));
@@ -244,7 +250,7 @@ void NostrRelayManager::connect(std::function<void(WStype_t, uint8_t*, size_t)> 
  * 
  */
 void NostrRelayManager::disconnect() {
-    for (int i = 0; i < relay_count; i++) {
+    for (int i = 0; i < relays.size(); i++) {
         _webSocketClients[i].disconnect();
         delay(1000);
     }
@@ -256,7 +262,7 @@ void NostrRelayManager::disconnect() {
  * @param serializedEventJson 
  */
 void NostrRelayManager::broadcastEvent(String serializedEventJson) {
-    for (int i = 0; i < relay_count; i++) {
+    for (int i = 0; i < relays.size(); i++) {
         _webSocketClients[i].sendTXT(serializedEventJson);
         delay(1000);
     }
@@ -291,7 +297,7 @@ void NostrRelayManager::_webSocketEvent(WStype_t type, uint8_t* payload, size_t 
   switch (type) {
     case WStype_DISCONNECTED:
         Serial.printf("[WSc] Disconnected from relay: %s\n", ".");
-        performEventAction("disconnected", relays[relayIndex]);
+        performEventAction("disconnected", relays[relayIndex].c_str());
         break;
     case WStype_CONNECTED:
         Serial.printf("[WSc] Connected to relay: %s\n", ".");

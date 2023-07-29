@@ -14,6 +14,7 @@
 #include <string>
 #include <map>
 #include <functional>
+#include <vector>
 
 class NostrRelayManager
 {
@@ -22,6 +23,8 @@ class NostrRelayManager
     using EventCallbackMap = std::map<std::string, EventCallbackFn>;
 
     NostrRelayManager();
+    // NostrRelayManager() : relays(std::vector<const char*>()) {}  // Default constructor
+    // NostrRelayManager(std::vector<const char*>& init_relays) : relays(init_relays) {}  // Constructor with vector argument
 
     void setMinRelaysAndTimeout(int minRelays, unsigned long minRelaysTimeout);
 
@@ -35,7 +38,7 @@ class NostrRelayManager
     void enqueueMessage(const char item[NostrQueueProcessor::MAX_ITEM_SIZE]);
     bool hasEnqueuedMessages();
 
-    void setRelays(const char *const new_messages[], int size);
+    void setRelays(const std::vector<String>& new_relays);
     void printRelay(int index) const;
     void connect(std::function<void(WStype_t, uint8_t*, size_t)> callback = nullptr);
     void disconnect();
@@ -55,7 +58,7 @@ class NostrRelayManager
 
     NostrQueueProcessor m_queue;
 
-    const char *const *relays;
+    std::vector<String> relays;
     int relay_count;
     WebSocketsClient _webSocketClients[4];
     void _webSocketEvent(WStype_t type, uint8_t* payload, size_t length, int relayIndex);

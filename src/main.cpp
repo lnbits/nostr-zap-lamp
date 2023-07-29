@@ -195,24 +195,33 @@ void createZapEventRequest() {
 void connectToNostrRelays() {
   Serial.println("Requesting Zap notifications");
 
-      const char *const relays[] = {
-          relayString,
-          "nostr.wine",
-      };
-      int relayCount = sizeof(relays) / sizeof(relays[0]);
-      
-      nostr.setLogging(true);
-      nostrRelayManager.setRelays(relays, relayCount);
-      nostrRelayManager.setMinRelaysAndTimeout(1,10000);
+  // split relayString by comma into vector
+  std::vector<String> relays;
+  String relayStringCopy = String(relayString);
+  int commaIndex = relayStringCopy.indexOf(",");
+  while (commaIndex != -1) {
+    relays.push_back(relayStringCopy.substring(0, commaIndex));
+    relayStringCopy = relayStringCopy.substring(commaIndex + 1);
+    commaIndex = relayStringCopy.indexOf(",");
+  }
+  // add last item after last comma
+  if (relayStringCopy.length() > 0) {
+    relays.push_back(relayStringCopy);
+  }
 
-      // Set some event specific callbacks here
-      Serial.println("Setting callbacks");
-      nostrRelayManager.setEventCallback("ok", okEvent);
-      nostrRelayManager.setEventCallback("connected", relayConnectedEvent);
-      nostrRelayManager.setEventCallback(9735, zapReceiptEvent);
+  // no need to convert to char* anymore
+  nostr.setLogging(true);
+  nostrRelayManager.setRelays(relays);
+  nostrRelayManager.setMinRelaysAndTimeout(1,10000);
 
-      Serial.println("connecting");
-      nostrRelayManager.connect();
+  // Set some event specific callbacks here
+  Serial.println("Setting callbacks");
+  nostrRelayManager.setEventCallback("ok", okEvent);
+  nostrRelayManager.setEventCallback("connected", relayConnectedEvent);
+  nostrRelayManager.setEventCallback(9735, zapReceiptEvent);
+
+  Serial.println("connecting");
+  nostrRelayManager.connect();
 }
 
 bool adjustLightingBrightnessUp = true;

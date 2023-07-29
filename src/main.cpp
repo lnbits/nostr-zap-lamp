@@ -136,25 +136,26 @@ void lampControlTask(void *pvParameters) {
     if (digitalRead(buttonPin) == LOW) {
       Serial.println("Button pressed. Changing brightness");
       changeBrightness();
-    }
+    } else {
 
-    // watch for lamp state and do as needed
-    if (zapAmountsFlashQueue.size() > 0) {
-      //  get size of queue and serial print all elements in queue
-      Serial.println("There are " + String(zapAmountsFlashQueue.size()) + " zaps in the queue");
-      for (int i = 0; i < zapAmountsFlashQueue.size(); i++) {
-        Serial.print(String(zapAmountsFlashQueue[i]) + ", ");
+      // watch for lamp state and do as needed
+      if (zapAmountsFlashQueue.size() > 0) {
+        //  get size of queue and serial print all elements in queue
+        Serial.println("There are " + String(zapAmountsFlashQueue.size()) + " zaps in the queue");
+        for (int i = 0; i < zapAmountsFlashQueue.size(); i++) {
+          Serial.print(String(zapAmountsFlashQueue[i]) + ", ");
+        }
+        Serial.println("");
+        xSemaphoreTake(zapMutex, portMAX_DELAY);
+        int zapAmount = zapAmountsFlashQueue[0];
+        zapAmountsFlashQueue.erase(zapAmountsFlashQueue.begin());
+        xSemaphoreGive(zapMutex);
+
+        doLightningFlash(zapAmount);
+        // vTaskDelay(500 / portTICK_PERIOD_MS);
       }
-      Serial.println("");
-      xSemaphoreTake(zapMutex, portMAX_DELAY);
-      int zapAmount = zapAmountsFlashQueue[0];
-      zapAmountsFlashQueue.erase(zapAmountsFlashQueue.begin());
-      xSemaphoreGive(zapMutex);
-
-      doLightningFlash(zapAmount);
-      // vTaskDelay(500 / portTICK_PERIOD_MS);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
     }
-    vTaskDelay(100 / portTICK_PERIOD_MS);
   }
 }
 
@@ -236,6 +237,8 @@ void changeBrightness() {
     if (lightBrightness >= 255) {
       lightBrightness = 255;
       adjustLightingBrightnessUp = false;
+      // quick double flash to show at max brughtness
+      Serial.println("Max brightness");
       delay(500); // pause to let the user take their finger off the button
     }
   } else {
@@ -243,6 +246,7 @@ void changeBrightness() {
     if (lightBrightness <= 0) {
       lightBrightness = 0;
       adjustLightingBrightnessUp = true;
+      Serial.println("Min brightness");
       delay(500); // pause to let the user take their finger off the button
     }
   }
@@ -285,7 +289,7 @@ void doLightningFlash(int numberOfFlashes) {
   // turn lamp off
   digitalWrite(ledPin, 0);
 
-  delay(50);
+  delay(100);
 
   for(int flash = 1; flash <= numberOfFlashes; flash++) {
     // turn the LED on
@@ -300,7 +304,7 @@ void doLightningFlash(int numberOfFlashes) {
       analogWrite(ledPin, i);  // set the LED brightness
       delay(1);  // wait for a moment
     }
-    delay(50);
+    delay(100);
   }
 
   // delay(50);

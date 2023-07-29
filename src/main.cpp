@@ -13,6 +13,7 @@
 #include <math.h>
 #include <SPIFFS.h>
 #include <vector>
+#include <ESP32Ping.h>
 
 #include "wManager.h"
 
@@ -25,6 +26,8 @@
 #define PARAM_FILE "/elements.json"
 
 int triggerAp = false;
+
+bool lastInternetConnectionState = false;
 
 int ledPin = 13; // Pin number where the LED is connected
 extern int buttonPin; // Pin number where the button is connected
@@ -112,18 +115,18 @@ void lampControlTask(void *pvParameters) {
   attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), handleButtonInterrupt, FALLING);
 
   for(;;) {
-  //   if(!hasInternetConnection) {
-  //   // slow fade pulse of LED
-  //   for (int i = 100; i < 255; i++) {
-  //     analogWrite(ledPin, i); // set the LED to the desired intensity
-  //     delay(10);  // wait for a moment
-  //   }
-  //   // now fade out
-  //   for (int i = 255; i >= 100; i--) {
-  //     analogWrite(ledPin, i); // set the LED bright ness
-  //     delay(10);  // wait for a moment
-  //   }
-  // }
+    if(!lastInternetConnectionState) {
+      // slow fade pulse of LED
+      for (int i = 100; i < 255; i++) {
+        analogWrite(ledPin, i); // set the LED to the desired intensity
+        delay(10);  // wait for a moment
+      }
+      // now fade out
+      for (int i = 255; i >= 100; i--) {
+        analogWrite(ledPin, i); // set the LED bright ness
+        delay(10);  // wait for a moment
+      }
+    }
 
     // detect double tap on button 
     if (doubleTapDetected) {
@@ -287,7 +290,7 @@ void doLightningFlash(int numberOfFlashes) {
   // fadeOutFlash(15);
 
   // turn lamp off
-  digitalWrite(ledPin, 0);
+  analogWrite(ledPin, 0);
 
   delay(100);
 
@@ -312,7 +315,7 @@ void doLightningFlash(int numberOfFlashes) {
   // fadeOutFlash(15);
   // fadeOutFlash(5);
 
-  delay(50);
+  delay(100);
 
   // set led to brightness
   analogWrite(ledPin, lightBrightness);
@@ -550,12 +553,33 @@ void setup() {
 
 }
 
+bool lastInternetConnectionCheckTime = 0;
+
 void loop() {
   // fill the queue with some random zap amounts
   // for (int i = 0; i < 3; i++) {
   //   zapAmountsFlashQueue.push_back(getRandomNum(1,3));
   // }
   // delay(30000);
+  // send ping to Quad9 9.9.9.9 every 10 seconds to check for internet connection
+  if (millis() - lastInternetConnectionCheckTime > 10000) {
+    if(WiFi.status() == WL_CONNECTED) {
+      IPAddress ip(9,9,9,9);  // Quad9 DNS
+      bool ret = Ping.ping(ip);
+      if(ret) {
+        if(!lastInternetConnectionState) {
+          Serial.println("Internet connection has come back! :D");
+          connectToNostrRelays();
+        }
+        lastInternetConnectionState = true;
+      } else {
+        lastInternetConnectionState = false;
+      }
+    }
+  }
+
   nostrRelayManager.loop();
   nostrRelayManager.broadcastEvents();
+
+
 }

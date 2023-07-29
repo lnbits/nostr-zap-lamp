@@ -32,6 +32,8 @@ int minFlashDelay = 100; // Minimum delay between flashes (in milliseconds)
 int maxFlashDelay = 5000; // Maximum delay between flashes (in milliseconds)
 int lightBrightness = 50; // The brightness of the LED (0-255)
 
+SemaphoreHandle_t zapMutex;
+
 // create a vector for storing zap amount for the flash queue
 std::vector<int> zapAmountsFlashQueue;
 
@@ -68,7 +70,7 @@ unsigned long getUnixTimestamp();
 void zapReceiptEvent(const std::string& key, const char* payload);
 void okEvent(const std::string& key, const char* payload);
 void nip01Event(const std::string& key, const char* payload);
-uint8_t getRandomNum(uint8_t min, uint8_t max);
+uint16_t getRandomNum(uint16_t min, uint16_t max);
 void relayConnectedEvent(const std::string& key, const std::string& message);
 void loadSettings();
 int64_t getAmountInSatoshis(const String &input);
@@ -110,21 +112,18 @@ void lampControlTask(void *pvParameters) {
   attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), handleButtonInterrupt, FALLING);
 
   for(;;) {
-    Serial.println("In the lamp freertos task loop");
-    Serial.println("Has internet connection: " + String(hasInternetConnection));
-
-    if(!hasInternetConnection) {
-    // slow fade pulse of LED
-    for (int i = 100; i < 255; i++) {
-      analogWrite(ledPin, i); // set the LED to the desired intensity
-      delay(10);  // wait for a moment
-    }
-    // now fade out
-    for (int i = 255; i >= 100; i--) {
-      analogWrite(ledPin, i); // set the LED bright ness
-      delay(10);  // wait for a moment
-    }
-  }
+  //   if(!hasInternetConnection) {
+  //   // slow fade pulse of LED
+  //   for (int i = 100; i < 255; i++) {
+  //     analogWrite(ledPin, i); // set the LED to the desired intensity
+  //     delay(10);  // wait for a moment
+  //   }
+  //   // now fade out
+  //   for (int i = 255; i >= 100; i--) {
+  //     analogWrite(ledPin, i); // set the LED bright ness
+  //     delay(10);  // wait for a moment
+  //   }
+  // }
 
     // detect double tap on button 
     if (doubleTapDetected) {
@@ -141,11 +140,19 @@ void lampControlTask(void *pvParameters) {
 
     // watch for lamp state and do as needed
     if (zapAmountsFlashQueue.size() > 0) {
-      Serial.println("Zap amount in queue " + String(zapAmountsFlashQueue[0]));
+      //  get size of queue and serial print all elements in queue
+      Serial.println("There are " + String(zapAmountsFlashQueue.size()) + " zaps in the queue");
+      for (int i = 0; i < zapAmountsFlashQueue.size(); i++) {
+        Serial.print(String(zapAmountsFlashQueue[i]) + ", ");
+      }
+      Serial.println("");
+      xSemaphoreTake(zapMutex, portMAX_DELAY);
       int zapAmount = zapAmountsFlashQueue[0];
       zapAmountsFlashQueue.erase(zapAmountsFlashQueue.begin());
+      xSemaphoreGive(zapMutex);
+
       doLightningFlash(zapAmount);
-      vTaskDelay(500 / portTICK_PERIOD_MS);
+      // vTaskDelay(500 / portTICK_PERIOD_MS);
     }
     vTaskDelay(100 / portTICK_PERIOD_MS);
   }
@@ -208,46 +215,6 @@ void connectToNostrRelays() {
       nostrRelayManager.connect();
 }
 
-
-
-void initWiFi() {
-  
-
-  // WiFi.onEvent(WiFiEvent);
-
-  // configureAccessPoint();
-    
-  // // WiFi.mode(WIFI_STA);
-  // // while (WiFi.status() != WL_CONNECTED) {
-  // //   delay(1000);
-  // // }
-
-  // signalWithLightning(3,100);
-  
-}
-
-/**
- * @brief While captive Portal callback
- * 
- * @return true 
- * @return false 
- */
-bool whileCP(void) {
-  bool rc;
-  // light the led full brightness
-  analogWrite(ledPin, 255);
-  rc = true;
-  return rc;
-}
-
-/**
- * @brief Configure the WiFi AP
- * 
- */
-void configureAccessPoint() {
-  
-}
-
 bool adjustLightingBrightnessUp = true;
 /**
  * @brief change lamp brightness
@@ -300,15 +267,20 @@ void fadeOutFlash(int intensity) {
 
 void doLightningFlash(int numberOfFlashes) {
 
-  fadeOutFlash(5);
-  fadeOutFlash(10);
-  fadeOutFlash(15);
+  Serial.println("Flashing " + String(numberOfFlashes) + " times");
 
-  delay(100);
+  // fadeOutFlash(5);
+  // fadeOutFlash(10);
+  // fadeOutFlash(15);
+
+  // turn lamp off
+  digitalWrite(ledPin, 0);
+
+  delay(50);
 
   for(int flash = 1; flash <= numberOfFlashes; flash++) {
     // turn the LED on
-    digitalWrite(ledPin, HIGH);
+    analogWrite(ledPin, 255);
 
     // wait for the specified time, longer for the first flash and shorter for subsequent flashes
     int flashDuration = 250 / flash * random(1,5);
@@ -319,9 +291,10 @@ void doLightningFlash(int numberOfFlashes) {
       analogWrite(ledPin, i);  // set the LED brightness
       delay(1);  // wait for a moment
     }
+    delay(50);
   }
 
-  delay(50);
+  // delay(50);
 
   // fadeOutFlash(15);
   // fadeOutFlash(5);
@@ -342,7 +315,10 @@ void flashLightning(int zapAmountSats) {
   Serial.println("Flashing " + String(flashCount) + " times");
 
   // push to the flash queue
-  zapAmountsFlashQueue.push_back(zapAmountSats);
+  xSemaphoreTake(zapMutex, portMAX_DELAY);
+  zapAmountsFlashQueue.push_back(flashCount);
+  xSemaphoreGive(zapMutex);
+
 }
 
 /**
@@ -480,8 +456,8 @@ int64_t getAmountInSatoshis(const String &input) {
 }
 
 
-uint8_t getRandomNum(uint8_t min, uint8_t max) {
-  uint8_t rand  = (esp_random() % (max - min + 1)) + min;
+uint16_t getRandomNum(uint16_t min, uint16_t max) {
+  uint16_t rand  = (esp_random() % (max - min + 1)) + min;
   Serial.println("Random number: " + String(rand));
   return rand;
 }
@@ -491,7 +467,7 @@ void zapReceiptEvent(const std::string& key, const char* payload) {
     if(lastPayload != payload) { // Prevent duplicate events from multiple relays triggering the same logic, as we are using multiple relays, this is likely to happen
       lastPayload = payload;
       String bolt11 = getBolt11InvoiceFromEvent(payload);
-      Serial.println("BOLT11: " + bolt11);
+      // Serial.println("BOLT11: " + bolt11);
       uint64_t amountInSatoshis = getAmountInSatoshis(bolt11);
       Serial.println("Zapped! " + String(amountInSatoshis));
       flashLightning(amountInSatoshis);
@@ -516,6 +492,8 @@ void initLamp() {
 void setup() {
   Serial.begin(115200);
 
+  zapMutex = xSemaphoreCreateMutex();
+
   buttonPin = 4;
   // Set the button pin as INPUT
   pinMode(buttonPin, INPUT_PULLUP);
@@ -531,7 +509,7 @@ void setup() {
 
   initLamp();
 
-  delay(1000);
+  delay(500);
   signalWithLightning(2,250);
 
     // start lamp control task
@@ -544,8 +522,8 @@ void setup() {
     NULL,             /* Task handle. */
     1);               /* Core where the task should run */
 
-    WiFi.onEvent(WiFiEvent);
-   init_WifiManager();
+  WiFi.onEvent(WiFiEvent);
+  init_WifiManager();
 
   createZapEventRequest();
 
@@ -560,8 +538,11 @@ void setup() {
 }
 
 void loop() {
+  // fill the queue with some random zap amounts
+  // for (int i = 0; i < 3; i++) {
+  //   zapAmountsFlashQueue.push_back(getRandomNum(1,3));
+  // }
+  // delay(30000);
   nostrRelayManager.loop();
   nostrRelayManager.broadcastEvents();
-  // Serial.println("In the main loop");
-  // delay(1000);
 }

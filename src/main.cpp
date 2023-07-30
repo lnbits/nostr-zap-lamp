@@ -27,7 +27,7 @@
 
 int triggerAp = false;
 
-bool lastInternetConnectionState = false;
+bool lastInternetConnectionState = true;
 
 int ledPin = 13; // Pin number where the LED is connected
 extern int buttonPin; // Pin number where the button is connected
@@ -197,6 +197,8 @@ void createZapEventRequest() {
  * 
  */
 void connectToNostrRelays() {
+  // first disconnect from all relays
+  nostrRelayManager.disconnect();
   Serial.println("Requesting Zap notifications");
 
   // split relayString by comma into vector
@@ -289,25 +291,34 @@ void doLightningFlash(int numberOfFlashes) {
   // fadeOutFlash(10);
   // fadeOutFlash(15);
 
-  // turn lamp off
-  analogWrite(ledPin, 0);
+  // // turn lamp off
+  analogWrite(ledPin, lightBrightness / 3);
 
   delay(100);
 
   for(int flash = 1; flash <= numberOfFlashes; flash++) {
+    Serial.println("Flash " + String(flash) + " of " + String(numberOfFlashes));
     // turn the LED on
     analogWrite(ledPin, 255);
 
     // wait for the specified time, longer for the first flash and shorter for subsequent flashes
-    int flashDuration = 250 / flash * random(1,5);
-    delay(flashDuration / 2);
+    // int flashDuration = 250 / flash * random(1,5);
+    int flashDuration = 250;
+    delay(250);
 
     // fast fade-out
-    for (int i = 255; i >= lightBrightness; i = i - 2) {
+    for (int i = 255; i >= lightBrightness / 3; i = i - 2) {
       analogWrite(ledPin, i);  // set the LED brightness
       delay(1);  // wait for a moment
     }
-    delay(100);
+    // analogWrite(ledPin, lightBrightness / 3);
+    delay(250);
+  }
+
+  // fade from lightBrightness / 3 to lightBrightness
+  for (int i = lightBrightness / 3; i <= lightBrightness; i = i + 1) {
+    analogWrite(ledPin, i); // set the LED brightness
+    delay(1);  // wait for a moment
   }
 
   // delay(50);
@@ -315,7 +326,7 @@ void doLightningFlash(int numberOfFlashes) {
   // fadeOutFlash(15);
   // fadeOutFlash(5);
 
-  delay(100);
+  delay(250);
 
   // set led to brightness
   analogWrite(ledPin, lightBrightness);
@@ -569,7 +580,8 @@ void loop() {
       if(ret) {
         if(!lastInternetConnectionState) {
           Serial.println("Internet connection has come back! :D");
-          connectToNostrRelays();
+          // reboot
+          ESP.restart();
         }
         lastInternetConnectionState = true;
       } else {

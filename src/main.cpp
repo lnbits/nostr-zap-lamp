@@ -529,14 +529,7 @@ void initLamp() {
 
 void setup() {
   Serial.begin(115200);
-
-  zapMutex = xSemaphoreCreateMutex();
-
-  buttonPin = 4;
-  // Set the button pin as INPUT
-  pinMode(buttonPin, INPUT_PULLUP);
-
-  randomSeed(analogRead(0)); // Seed the random number generator
+  Serial.println("boot");
 
   FlashFS.begin(FORMAT_ON_FAIL);
   // init spiffs
@@ -546,6 +539,15 @@ void setup() {
   }
 
   initLamp();
+
+  zapMutex = xSemaphoreCreateMutex();
+
+  buttonPin = 4;
+  // Set the button pin as INPUT
+  pinMode(buttonPin, INPUT_PULLUP);
+
+  randomSeed(analogRead(0)); // Seed the random number generator
+
 
   // delay(500);
   // signalWithLightning(2,250);
@@ -604,5 +606,10 @@ void loop() {
   nostrRelayManager.loop();
   nostrRelayManager.broadcastEvents();
 
+  // reboot every hour
+  if (millis() > 3600000) {
+    Serial.println("Rebooting");
+    ESP.restart();
+  }
 
 }

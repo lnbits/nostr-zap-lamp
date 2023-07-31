@@ -29,6 +29,7 @@ int triggerAp = false;
 
 bool lastInternetConnectionState = true;
 
+int socketDisconnectedCount = 0;
 int ledPin = 13; // Pin number where the LED is connected
 extern int buttonPin; // Pin number where the button is connected
 int minFlashDelay = 100; // Minimum delay between flashes (in milliseconds)
@@ -73,8 +74,9 @@ unsigned long getUnixTimestamp();
 void zapReceiptEvent(const std::string& key, const char* payload);
 void okEvent(const std::string& key, const char* payload);
 void nip01Event(const std::string& key, const char* payload);
-uint16_t getRandomNum(uint16_t min, uint16_t max);
 void relayConnectedEvent(const std::string& key, const std::string& message);
+void relayDisonnectedEvent(const std::string& key, const std::string& message);
+uint16_t getRandomNum(uint16_t min, uint16_t max);
 void loadSettings();
 int64_t getAmountInSatoshis(const String &input);
 String getBolt11InvoiceFromEvent(String jsonStr);
@@ -144,11 +146,11 @@ void lampControlTask(void *pvParameters) {
       // watch for lamp state and do as needed
       if (zapAmountsFlashQueue.size() > 0) {
         //  get size of queue and serial print all elements in queue
-        Serial.println("There are " + String(zapAmountsFlashQueue.size()) + " zaps in the queue");
-        for (int i = 0; i < zapAmountsFlashQueue.size(); i++) {
-          Serial.print(String(zapAmountsFlashQueue[i]) + ", ");
-        }
-        Serial.println("");
+        Serial.println("There are " + String(zapAmountsFlashQueue.size()) + " zap(s) in the queue");
+        // for (int i = 0; i < zapAmountsFlashQueue.size(); i++) {
+        //   Serial.print(String(zapAmountsFlashQueue[i]) + ", ");
+        // }
+        // Serial.println("");
         xSemaphoreTake(zapMutex, portMAX_DELAY);
         int zapAmount = zapAmountsFlashQueue[0];
         zapAmountsFlashQueue.erase(zapAmountsFlashQueue.begin());
@@ -224,6 +226,7 @@ void connectToNostrRelays() {
   Serial.println("Setting callbacks");
   nostrRelayManager.setEventCallback("ok", okEvent);
   nostrRelayManager.setEventCallback("connected", relayConnectedEvent);
+  nostrRelayManager.setEventCallback("disconnected", relayDisonnectedEvent);
   nostrRelayManager.setEventCallback(9735, zapReceiptEvent);
 
   Serial.println("connecting");
@@ -297,7 +300,6 @@ void doLightningFlash(int numberOfFlashes) {
   delay(100);
 
   for(int flash = 1; flash <= numberOfFlashes; flash++) {
-    Serial.println("Flash " + String(flash) + " of " + String(numberOfFlashes));
     // turn the LED on
     analogWrite(ledPin, 255);
 
@@ -338,8 +340,6 @@ void flashLightning(int zapAmountSats) {
   if (zapAmountSats > 0) {
     flashCount = floor(log10(zapAmountSats)) + 1;
   }
-  Serial.println("Zap amount: " + String(zapAmountSats) + " sats");
-  Serial.println("Flashing " + String(flashCount) + " times");
 
   // push to the flash queue
   xSemaphoreTake(zapMutex, portMAX_DELAY);
@@ -380,12 +380,24 @@ unsigned long getUnixTimestamp() {
 String lastPayload = "";
 
 void relayConnectedEvent(const std::string& key, const std::string& message) {
+  socketDisconnectedCount = 0;
   Serial.println("Relay connected: ");
   
   Serial.print(F("Requesting events:"));
   Serial.println(serialisedEventRequest);
 
   nostrRelayManager.broadcastEvent(serialisedEventRequest);
+}
+
+void relayDisonnectedEvent(const std::string& key, const std::string& message) {
+  Serial.println("Relay disconnected: ");
+  socketDisconnectedCount++;
+  // reboot after 3 socketDisconnectedCount subsequenet messages
+  if(socketDisconnectedCount > 3) {
+    Serial.println("Too many socket disconnections. Restarting");
+    // restart device
+    ESP.restart();
+  }
 }
 
 void okEvent(const std::string& key, const char* payload) {
@@ -490,7 +502,6 @@ uint16_t getRandomNum(uint16_t min, uint16_t max) {
 }
 
 void zapReceiptEvent(const std::string& key, const char* payload) {
-  Serial.println("Zap receipt event");
     if(lastPayload != payload) { // Prevent duplicate events from multiple relays triggering the same logic, as we are using multiple relays, this is likely to happen
       lastPayload = payload;
       String bolt11 = getBolt11InvoiceFromEvent(payload);
@@ -536,8 +547,8 @@ void setup() {
 
   initLamp();
 
-  delay(500);
-  signalWithLightning(2,250);
+  // delay(500);
+  // signalWithLightning(2,250);
 
     // start lamp control task
   xTaskCreatePinnedToCore(

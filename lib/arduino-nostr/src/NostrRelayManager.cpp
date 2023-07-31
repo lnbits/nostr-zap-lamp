@@ -284,6 +284,8 @@ String NostrRelayManager::getNewSubscriptionId() {
 return result;
 }
 
+
+
 /**
  * @brief Generic websocket event callback
  * 
@@ -293,7 +295,7 @@ return result;
  * @param relayIndex 
  */
 void NostrRelayManager::_webSocketEvent(WStype_t type, uint8_t* payload, size_t length, int relayIndex) {
-    Serial.println("Message from relay index:" + String(relayIndex));
+//   Serial.println("Message from relay index:" + String(relayIndex));
   switch (type) {
     case WStype_DISCONNECTED:
         Serial.printf("[WSc] Disconnected from relay: %s\n", ".");
@@ -305,7 +307,7 @@ void NostrRelayManager::_webSocketEvent(WStype_t type, uint8_t* payload, size_t 
     break;
     case WStype_TEXT:
     {
-        Serial.printf("[WSc]: Received text from relay %s: %s\n", ".", payload);
+        // Serial.printf("[WSc]: Received text from relay %s: %s\n", ".", payload);
         const char *payloadStr = (char *)payload;
 
         // if the string is a JSON string, convert it to a JSON object

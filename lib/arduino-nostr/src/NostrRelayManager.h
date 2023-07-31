@@ -60,6 +60,7 @@ class NostrRelayManager
 
     std::vector<String> relays;
     int relay_count;
+    int socketDisconnectionCount;
     WebSocketsClient _webSocketClients[4];
     void _webSocketEvent(WStype_t type, uint8_t* payload, size_t length, int relayIndex);
 };

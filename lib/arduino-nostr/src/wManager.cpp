@@ -180,7 +180,7 @@ void init_WifiManager()
   // Text box (String) - 80 characters maximum
   WiFiManagerParameter npub_text_box("npubhex", "npub in hex format", npubHexString, 80);
 
-  WiFiManagerParameter relay_text_box_num("relay", "Prefered relay(s) (Comma separated, max of 3)", relayString, 80);
+  WiFiManagerParameter relay_text_box_num("relay", "Prefered relay", relayString, 80);
 
   // Add all defined parameters
   wm.addParameter(&npub_text_box);

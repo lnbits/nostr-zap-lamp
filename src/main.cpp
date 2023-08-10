@@ -53,7 +53,6 @@ NostrRequestOptions* eventRequestOptions;
 
 bool hasSentEvent = false;
 
-String apPassword = "ToTheMoon1"; //default WiFi AP password
 extern char npubHexString[80];
 extern char relayString[80];
 

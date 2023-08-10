@@ -192,7 +192,7 @@ void init_WifiManager()
   wm.addParameter(&npub_text_box);
   wm.addParameter(&relay_text_box_num);
 
-  Serial.println("AllDone: ");
+  Serial.println("All Done: ");
   if (forceConfig)
     // Run if we need a configuration
   {

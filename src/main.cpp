@@ -392,7 +392,7 @@ void relayDisonnectedEvent(const std::string& key, const std::string& message) {
   Serial.println("Relay disconnected: ");
   socketDisconnectedCount++;
   // reboot after 3 socketDisconnectedCount subsequenet messages
-  if(socketDisconnectedCount > 3) {
+  if(socketDisconnectedCount >= 3) {
     Serial.println("Too many socket disconnections. Restarting");
     // restart device
     ESP.restart();

@@ -166,6 +166,9 @@ void init_WifiManager()
   // Set config save notify callback
   wm.setSaveConfigCallback(saveConfigCallback);
 
+  wm.setHostname("NostrZapLamp");
+  wm.setTitle("NostrZapLamp");
+
   // Set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
   wm.setAPCallback(configModeCallback);
 

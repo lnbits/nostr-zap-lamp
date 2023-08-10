@@ -142,6 +142,9 @@ void init_WifiManager()
   if(digitalRead(buttonPin) == LOW){
     Serial.println(F("Forcing config mode"));
     forceConfig = true;
+    // clear any SPIFFs storage
+    wm.resetSettings();
+    delay(1000);
     wm.setBreakAfterConfig(true); //Set to detect config edition and save
  }
   bool spiffsSetup = loadConfigFile();

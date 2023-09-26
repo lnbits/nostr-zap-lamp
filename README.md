@@ -28,11 +28,11 @@ The number of flashes corresponds to the number of digits in the number of sats 
 
 ## Usage instructions
 1. Hold button and power on to launch the lamp into access point mode. a solid lamp light inidicates the device is in AP mode.
-1. Connect to the ZapLamp Wifi and open the AP portal
-1. Go to Menu > Settings
-1. Enter the hex of your npub to watch. Use [this tool](https://slowli.github.io/bech32-buffer/) to convert bech32 npub to hex
+1. Using a smart phone or computer, connect to the ZapLamp's Wifi AP named "ZapLampAP" with the password "ZipZapZop"
+1. When the AP portal opens, select "Configure WiFi"
+1. Select your WiFi router and enter it's password into the password field.
+1. Optional: Enter the _hex_ value of your npub to watch for Zaps. Use [this tool](https://slowli.github.io/bech32-buffer/) to convert bech32 npub to hex. If you leave this field blank, the lamp will react to all zaps on the relay.
 1. Enter a prefered relay if desired and press save
-1. Menu > Reset to restart
 
 ## Build Instructions
 

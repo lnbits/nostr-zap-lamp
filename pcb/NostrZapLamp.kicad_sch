@@ -364,8 +364,8 @@
     (property "Datasheet" "~" (at 161.925 88.9 90)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid 2369d329-56a4-44e0-8b38-c334234f7402))
-    (pin "2" (uuid cefd810d-e7e8-4f2b-8f4d-873a7ac85cab))
+    (pin "1" (uuid 787ab9b6-e663-4d9a-a12a-a5c75f1dc64c))
+    (pin "2" (uuid 8049fb61-7adb-4a77-a2c5-0e4d0d4b3b54))
     (instances
       (project "NostrZapLamp"
         (path "/3c569c5f-cc18-41fb-b665-3976c3c18321"

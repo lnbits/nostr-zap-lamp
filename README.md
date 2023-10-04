@@ -40,7 +40,7 @@ The number of flashes corresponds to the number of digits in the number of sats 
 + Cut the lamp leads to around 10cm long
 + Attach a female jumper lead to each. Solder or use block connectors to attach the leads.
 + Attach female jumper leads to the push button
-+ Connect the lamp to the ESP32. Pin 13 to positive and negative to GND
-+ Connect the button to the ESP32 on pins 4 and GND
++ Connect the lamp to the ESP32: GPIO13 on the ESP32 -> lamp's positive wire and GND on the ESP32 -> lamp's negative wire.
++ Connect the push button button to the ESP32 on GPIO4 and GND
 + Install the lamp, ESP32, button and lead in the printed enclosure
 + Power on the device and configure using the WiFi access point portal.

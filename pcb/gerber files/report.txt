@@ -1,0 +1,7 @@
+Plotted to '/Users/mark/projects/nostr-zap-lamp/pcb/gerber files/NostrZapLamp-F_Cu.gbr'.
+Plotted to '/Users/mark/projects/nostr-zap-lamp/pcb/gerber files/NostrZapLamp-B_Cu.gbr'.
+Plotted to '/Users/mark/projects/nostr-zap-lamp/pcb/gerber files/NostrZapLamp-F_Silkscreen.gbr'.
+Plotted to '/Users/mark/projects/nostr-zap-lamp/pcb/gerber files/NostrZapLamp-B_Silkscreen.gbr'.
+Plotted to '/Users/mark/projects/nostr-zap-lamp/pcb/gerber files/NostrZapLamp-Edge_Cuts.gbr'.
+Created Gerber job file '/Users/mark/projects/nostr-zap-lamp/pcb/gerber files/NostrZapLamp-job.gbrjob'.
+Info: Done.

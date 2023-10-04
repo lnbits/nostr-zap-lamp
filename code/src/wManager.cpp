@@ -142,6 +142,9 @@ void init_WifiManager()
   if(digitalRead(buttonPin) == LOW){
     Serial.println(F("Forcing config mode"));
     forceConfig = true;
+    // clear any SPIFFs storage
+    wm.resetSettings();
+    delay(1000);
     wm.setBreakAfterConfig(true); //Set to detect config edition and save
  }
   bool spiffsSetup = loadConfigFile();
@@ -162,6 +165,9 @@ void init_WifiManager()
   
   // Set config save notify callback
   wm.setSaveConfigCallback(saveConfigCallback);
+
+  wm.setHostname("NostrZapLamp");
+  wm.setTitle("NostrZapLamp");
 
   // Set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
   wm.setAPCallback(configModeCallback);
@@ -186,7 +192,7 @@ void init_WifiManager()
   wm.addParameter(&npub_text_box);
   wm.addParameter(&relay_text_box_num);
 
-  Serial.println("AllDone: ");
+  Serial.println("All Done: ");
   if (forceConfig)
     // Run if we need a configuration
   {

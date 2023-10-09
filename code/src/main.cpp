@@ -515,6 +515,7 @@ uint16_t getRandomNum(uint16_t min, uint16_t max) {
 
 void zapReceiptEvent(const std::string& key, const char* payload) {
     if(lastPayload != payload) { // Prevent duplicate events from multiple relays triggering the same logic, as we are using multiple relays, this is likely to happen
+      click(150);
       lastPayload = payload;
       String bolt11 = getBolt11InvoiceFromEvent(payload);
       // Serial.println("BOLT11: " + bolt11);

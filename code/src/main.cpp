@@ -23,6 +23,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#define BUZZER_PIN 2      // Connect the piezo buzzer to this GPIO pin.
+#define CLICK_DURATION 10 // Duration in milliseconds.
+
 #define PARAM_FILE "/elements.json"
 
 int triggerAp = false;
@@ -60,6 +63,7 @@ fs::SPIFFSFS &FlashFS = SPIFFS;
 #define FORMAT_ON_FAIL true
 
 // define funcs
+void click(int period);
 void configureAccessPoint();
 void initWiFi();
 bool whileCP(void);
@@ -101,6 +105,9 @@ void WiFiEvent(WiFiEvent_t event) {
   switch(event) {
     case SYSTEM_EVENT_STA_GOT_IP:
       Serial.println("Connected to WiFi and got an IP");
+      click(250);
+      delay(100);
+      click(250);
       connectToNostrRelays();      
       break;
     case SYSTEM_EVENT_STA_DISCONNECTED:
@@ -381,6 +388,12 @@ String lastPayload = "";
 void relayConnectedEvent(const std::string& key, const std::string& message) {
   socketDisconnectedCount = 0;
   Serial.println("Relay connected: ");
+
+  click(250);
+  delay(100);
+  click(250);
+  delay(100);
+  click(250);
   
   Serial.print(F("Requesting events:"));
   Serial.println(serialisedEventRequest);
@@ -526,9 +539,23 @@ void initLamp() {
   lightBrightness = brightnessStr.toInt();
 }
 
+void click(int period)
+{
+  for (int i = 0; i < CLICK_DURATION; i++)
+  {
+    digitalWrite(BUZZER_PIN, HIGH);
+    delayMicroseconds(period); // Half period of 1000Hz tone.
+    digitalWrite(BUZZER_PIN, LOW);
+    delayMicroseconds(period); // Other half period of 1000Hz tone.
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.println("boot");
+
+  pinMode(BUZZER_PIN, OUTPUT); // Set the buzzer pin as an output.
+  click(250);
 
   FlashFS.begin(FORMAT_ON_FAIL);
   // init spiffs

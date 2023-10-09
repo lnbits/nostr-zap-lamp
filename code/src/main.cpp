@@ -24,7 +24,7 @@
 #include "freertos/task.h"
 
 #define BUZZER_PIN 2      // Connect the piezo buzzer to this GPIO pin.
-#define CLICK_DURATION 10 // Duration in milliseconds.
+#define CLICK_DURATION 20 // Duration in milliseconds.
 
 #define PARAM_FILE "/elements.json"
 
@@ -55,6 +55,8 @@ extern bool hasInternetConnection;
 NostrRequestOptions* eventRequestOptions;
 
 bool hasSentEvent = false;
+
+bool isBuzzerEnabled = false;
 
 extern char npubHexString[80];
 extern char relayString[80];
@@ -105,9 +107,9 @@ void WiFiEvent(WiFiEvent_t event) {
   switch(event) {
     case SYSTEM_EVENT_STA_GOT_IP:
       Serial.println("Connected to WiFi and got an IP");
-      click(250);
+      click(225);
       delay(100);
-      click(250);
+      click(225);
       connectToNostrRelays();      
       break;
     case SYSTEM_EVENT_STA_DISCONNECTED:
@@ -162,7 +164,13 @@ void lampControlTask(void *pvParameters) {
         zapAmountsFlashQueue.erase(zapAmountsFlashQueue.begin());
         xSemaphoreGive(zapMutex);
 
+        // Click the buzzer zapAmount many times in a for loop with 100 ms delay
+        for (int i = 0; i < zapAmount; i++) {
+          click(225);
+          delay(100);
+        }
         doLightningFlash(zapAmount);
+
         // vTaskDelay(500 / portTICK_PERIOD_MS);
       }
       vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -389,11 +397,11 @@ void relayConnectedEvent(const std::string& key, const std::string& message) {
   socketDisconnectedCount = 0;
   Serial.println("Relay connected: ");
 
-  click(250);
+  click(225);
   delay(100);
-  click(250);
+  click(225);
   delay(100);
-  click(250);
+  click(225);
   
   Serial.print(F("Requesting events:"));
   Serial.println(serialisedEventRequest);
@@ -515,7 +523,6 @@ uint16_t getRandomNum(uint16_t min, uint16_t max) {
 
 void zapReceiptEvent(const std::string& key, const char* payload) {
     if(lastPayload != payload) { // Prevent duplicate events from multiple relays triggering the same logic, as we are using multiple relays, this is likely to happen
-      click(150);
       lastPayload = payload;
       String bolt11 = getBolt11InvoiceFromEvent(payload);
       // Serial.println("BOLT11: " + bolt11);
@@ -542,6 +549,9 @@ void initLamp() {
 
 void click(int period)
 {
+  if(!isBuzzerEnabled) {
+    return;
+  }
   for (int i = 0; i < CLICK_DURATION; i++)
   {
     digitalWrite(BUZZER_PIN, HIGH);
@@ -556,7 +566,7 @@ void setup() {
   Serial.println("boot");
 
   pinMode(BUZZER_PIN, OUTPUT); // Set the buzzer pin as an output.
-  click(250);
+  click(225);
 
   FlashFS.begin(FORMAT_ON_FAIL);
   // init spiffs

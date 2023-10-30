@@ -51,7 +51,3 @@ jobs:
         run: |
           gh release create "$tag" --generate-notes ./build/nostrZapLamp.ino.bootloader.bin \
             ./build/nostrZapLamp.ino.bin ./build/nostrZapLamp.ino.partitions.bin
-
-  pages:
-    needs: [ release ]
-    uses: ./.github/workflows/static.yml

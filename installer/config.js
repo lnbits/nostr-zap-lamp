@@ -20,27 +20,27 @@ export const addressesAndFiles = [
 export const configPath = "elements.json";
 export const elements = [
   {
-    name: "ssid",
+    name: "config_ssid",
     value: "",
     label: "WiFi SSID",
     type: "text",
   },
   {
-    name: "password",
+    name: "config_wifi_password",
     value: "",
     label: "WiFi Password",
     type: "text",
   },
   {
-    name: "relay",
-    value: "",
+    name: "config_relay",
+    value: "nos.lol",
     label: "Nostr Relay URL",
     type: "text",
   },
   {
-    name: "pubkey",
+    name: "config_pubkey",
     value: "",
-    label: "Nostr Public Key in hex",
+    label: "The Public Key in Hex to Watch for Zaps",
     type: "text",
   },
 ];

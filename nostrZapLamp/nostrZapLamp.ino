@@ -5,10 +5,10 @@
 
 String version = "0.0.1";
 
-String ssid = "null"; // 'String ssid = "ssid";' / 'String ssid = "null";'
-String wifiPassword = "null"; // 'String wifiPassword = "password";' / 'String wifiPassword = "null";'
-String npubHex = "null";
-String relaysString = "null";
+String config_ssid = "null"; // 'String config_ssid = "config_ssid";' / 'String config_ssid = "null";'
+String config_wifi_password = "null"; // 'String config_wifi_password = "password";' / 'String config_wifi_password = "null";'
+String config_pubkey = "null";
+String config_relay = "null";
 
 ///////////////////////////////////////////////////////////////////////////////////
 //                                 END of variables                              //
@@ -184,11 +184,11 @@ void createZapEventRequest() {
   eventRequestOptions->kinds_count = sizeof(kinds) / sizeof(kinds[0]);
 
   // // Populate #p
-  Serial.println("npubHexString is |" + npubHex + "|");
-  if(npubHex != "") {
+  Serial.println("npubHexString is |" + config_pubkey + "|");
+  if(config_pubkey != "") {
     Serial.println("npub is specified");
     String* pubkeys = new String[1];  // Allocate memory dynamically
-    pubkeys[0] = npubHex;
+    pubkeys[0] = config_pubkey;
     eventRequestOptions->p = pubkeys;
     eventRequestOptions->p_count = 1;
   }
@@ -212,7 +212,7 @@ void connectToNostrRelays() {
 
   // split relays by comma into vector
   std::vector<String> relays;
-  String relayStringCopy = relaysString;
+  String relayStringCopy = config_relay;
   int commaIndex = relayStringCopy.indexOf(",");
   while (commaIndex != -1) {
     relays.push_back(relayStringCopy.substring(0, commaIndex));
@@ -634,12 +634,12 @@ void setup() {
 
   readFiles(); // get the saved details and store in global variables
 
-  if(triggerConfig == true || ssid == "" || ssid == "null") {
+  if(triggerConfig == true || config_ssid == "" || config_ssid == "null") {
     Serial.println("Launch serial config");
     configOverSerialPort();
   }
   else {
-    WiFi.begin(ssid.c_str(), wifiPassword.c_str());
+    WiFi.begin(config_ssid.c_str(), config_wifi_password.c_str());
     Serial.print("Connecting to WiFi");
     while (WiFi.status() != WL_CONNECTED) {
       Serial.print(".");
@@ -706,50 +706,50 @@ void readFiles()
             Serial.println(error.c_str());
             return;
         }
-        if(ssid == "null"){ // check ssid is not set above
-            ssid = getJsonValue(doc, "ssid");
+        if(config_ssid == "null"){ // check config_ssid is not set above
+            config_ssid = getJsonValue(doc, "config_ssid");
             Serial.println("");
-            Serial.println("ssid used from memory");
-            Serial.println("SSID: " + ssid);
+            Serial.println("config_ssid used from memory");
+            Serial.println("config_ssid: " + config_ssid);
         }
         else{
             Serial.println("");
-            Serial.println("ssid hardcoded");
-            Serial.println("SSID: " + ssid);
+            Serial.println("config_ssid hardcoded");
+            Serial.println("config_ssid: " + config_ssid);
         }
-        if(wifiPassword == "null"){ // check wifiPassword is not set above
-            wifiPassword = getJsonValue(doc, "wifipassword");
+        if(config_wifi_password == "null"){ // check config_wifi_password is not set above
+            config_wifi_password = getJsonValue(doc, "config_wifi_password");
             Serial.println("");
-            Serial.println("ssid password used from memory");
-            Serial.println("SSID password: " + wifiPassword);
-        }
-        else{
-            Serial.println("");
-            Serial.println("ssid password hardcoded");
-            Serial.println("SSID password: " + wifiPassword);
-        }
-        if(npubHex == "null"){ // check nPubHex
-            npubHex = getJsonValue(doc, "npubHex");
-            Serial.println("");
-            Serial.println("npubHex used from memory");
-            Serial.println("npubHex: " + npubHex);
+            Serial.println("config_wifi_password used from memory");
+            Serial.println("config_wifi_password: " + config_wifi_password);
         }
         else{
             Serial.println("");
-            Serial.println("npubHex hardcoded");
-            Serial.println("npubHex: " + npubHex);
+            Serial.println("config_wifi_password hardcoded");
+            Serial.println("config_wifi_password: " + config_wifi_password);
+        }
+        if(config_pubkey == "null"){ // check nPubHex
+            config_pubkey = getJsonValue(doc, "config_pubkey");
+            Serial.println("");
+            Serial.println("config_pubkey used from memory");
+            Serial.println("config_pubkey: " + config_pubkey);
+        }
+        else{
+            Serial.println("");
+            Serial.println("config_pubkey hardcoded");
+            Serial.println("config_pubkey: " + config_pubkey);
         }
 
-        if(relaysString == "null"){ // check relays
-            relaysString = getJsonValue(doc, "relays");
+        if(config_relay == "null"){ // check relays
+            config_relay = getJsonValue(doc, "config_relay");
             Serial.println("");
-            Serial.println("relays used from memory");
-            Serial.println("relays: " + relaysString);
+            Serial.println("config_relays used from memory");
+            Serial.println("config_relays: " + config_relay);
         }
         else{
             Serial.println("");
-            Serial.println("relays hardcoded");
-            Serial.println("relays: " + relaysString);
+            Serial.println("config_relays hardcoded");
+            Serial.println("config_relays: " + config_relay);
         }
     }
     paramFile.close();

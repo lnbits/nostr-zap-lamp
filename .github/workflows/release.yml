@@ -49,7 +49,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
         run: |
-          gh release create "$tag" --generate-notes ./dist/$tag/nostrZapLamp.ino.bootloader.bin \
+          gh release create "$tag" --generate-notes ./build/nostrZapLamp.ino.bootloader.bin \
             ./build/nostrZapLamp.ino.bin ./build/nostrZapLamp.ino.partitions.bin
 
   pages:

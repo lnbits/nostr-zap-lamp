@@ -41,7 +41,7 @@ struct KeyValue {
 };
 
 int buttonPin = 4;
-int portalPin = 2;
+int portalPin = 15;
 int triggerAp = false;
 
 bool lastInternetConnectionState = true;
@@ -614,8 +614,10 @@ void setup() {
   int timer = 0;
   while (timer < 2000)
   {
-    digitalWrite(2, HIGH);
-    Serial.println(touchRead(portalPin));
+    digitalWrite(ledPin, HIGH);
+    
+    Serial.println("Portal pin value is " + String(touchRead(portalPin)));
+    Serial.println("Button pin is" + String(digitalRead(buttonPin)));
     if (
       touchRead(portalPin) < 60
       ||
@@ -628,7 +630,7 @@ void setup() {
 
     timer = timer + 100;
     delay(150);
-    digitalWrite(2, LOW);
+    digitalWrite(ledPin, LOW);
     delay(150);
   }
 

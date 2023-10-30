@@ -1,7 +1,7 @@
 #!/bin/sh
 PROJECT_NAME=nostrZapLamp
 REPO=https://github.com/lnbits/nostr-zap-lamp/releases/download
-INSTALLER_PATH=./hardware-installer/src/firmware/esp32
+INSTALLER_PATH=./hardware-installer/public/firmware/esp32
 
 git clone https://github.com/lnbits/hardware-installer
 

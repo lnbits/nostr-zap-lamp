@@ -3,6 +3,7 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
+code/.vscode
 pcb/*.lck
 pcb/NostrZapLamp-backups
 build

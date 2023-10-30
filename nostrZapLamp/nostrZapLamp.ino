@@ -1,6 +1,20 @@
-#include <Arduino.h>
+///////////////////////////////////////////////////////////////////////////////////
+//         Change these variables directly in the code or use the config         //
+//  form in the web-installer https://lnbits.github.io/nostr-zap-lamp/installer/  //
+///////////////////////////////////////////////////////////////////////////////////
+
+String version = "0.0.1";
+
+String ssid = "null"; // 'String ssid = "ssid";' / 'String ssid = "null";'
+String wifiPassword = "null"; // 'String wifiPassword = "password";' / 'String wifiPassword = "null";'
+String npubHex = "null";
+String relaysString = "null";
+
+///////////////////////////////////////////////////////////////////////////////////
+//                                 END of variables                              //
+///////////////////////////////////////////////////////////////////////////////////
+
 #include <WiFi.h>
-#include <WebServer.h>
 #include "time.h"
 #include <NostrEvent.h>
 #include <NostrRelayManager.h>
@@ -9,14 +23,9 @@
 #include "Bitcoin.h"
 #include "Hash.h"
 #include <esp_random.h>
-/* #include "QRCode.h" */
 #include <math.h>
 #include <SPIFFS.h>
 #include <vector>
-/* #include <ESP32Ping.h> */
-
-#include "wManager.h"
-
 #include <ArduinoJson.h>
 
 // freertos
@@ -26,8 +35,13 @@
 #define BUZZER_PIN 2      // Connect the piezo buzzer to this GPIO pin.
 #define CLICK_DURATION 20 // Duration in milliseconds.
 
-/* #define PARAM_FILE "/elements.json" */
+struct KeyValue {
+    String key;
+    String value;
+};
 
+int buttonPin = 4;
+int portalPin = 2;
 int triggerAp = false;
 
 bool lastInternetConnectionState = true;
@@ -38,6 +52,8 @@ extern int buttonPin; // Pin number where the button is connected
 int minFlashDelay = 100; // Minimum delay between flashes (in milliseconds)
 int maxFlashDelay = 5000; // Maximum delay between flashes (in milliseconds)
 int lightBrightness = 50; // The brightness of the LED (0-255)
+
+bool forceConfig = false;
 
 SemaphoreHandle_t zapMutex;
 
@@ -58,11 +74,10 @@ bool hasSentEvent = false;
 
 bool isBuzzerEnabled = false;
 
-extern char npubHexString[80];
-extern char relayString[80];
-
 fs::SPIFFSFS &FlashFS = SPIFFS;
 #define FORMAT_ON_FAIL true
+#define PARAM_FILE "/elements.json"
+
 
 // define funcs
 void click(int period);
@@ -78,7 +93,6 @@ void initLamp();
 unsigned long getUnixTimestamp();
 void zapReceiptEvent(const std::string& key, const char* payload);
 void okEvent(const std::string& key, const char* payload);
-void nip01Event(const std::string& key, const char* payload);
 void relayConnectedEvent(const std::string& key, const std::string& message);
 void relayDisonnectedEvent(const std::string& key, const std::string& message);
 uint16_t getRandomNum(uint16_t min, uint16_t max);
@@ -100,23 +114,6 @@ void IRAM_ATTR handleButtonInterrupt() {
     doubleTapDetected = true;
   }
   lastButtonPress = now;
-}
-
-// Define the WiFi event callback function
-void WiFiEvent(WiFiEvent_t event) {
-  switch(event) {
-    case SYSTEM_EVENT_STA_GOT_IP:
-      Serial.println("Connected to WiFi and got an IP");
-      click(225);
-      delay(100);
-      click(225);
-      connectToNostrRelays();
-      break;
-    case SYSTEM_EVENT_STA_DISCONNECTED:
-      Serial.println("Disconnected from WiFi");
-      // WiFi.begin(ssid, password); // Try to reconnect after getting disconnected
-      break;
-  }
 }
 
 //free rtos task for lamp control
@@ -155,10 +152,6 @@ void lampControlTask(void *pvParameters) {
       if (zapAmountsFlashQueue.size() > 0) {
         //  get size of queue and serial print all elements in queue
         Serial.println("There are " + String(zapAmountsFlashQueue.size()) + " zap(s) in the queue");
-        // for (int i = 0; i < zapAmountsFlashQueue.size(); i++) {
-        //   Serial.print(String(zapAmountsFlashQueue[i]) + ", ");
-        // }
-        // Serial.println("");
         xSemaphoreTake(zapMutex, portMAX_DELAY);
         int zapAmount = zapAmountsFlashQueue[0];
         zapAmountsFlashQueue.erase(zapAmountsFlashQueue.begin());
@@ -191,11 +184,11 @@ void createZapEventRequest() {
   eventRequestOptions->kinds_count = sizeof(kinds) / sizeof(kinds[0]);
 
   // // Populate #p
-  Serial.println("npubHexString is |" + String(npubHexString) + "|");
-  if(String(npubHexString) != "") {
+  Serial.println("npubHexString is |" + npubHex + "|");
+  if(npubHex != "") {
     Serial.println("npub is specified");
     String* pubkeys = new String[1];  // Allocate memory dynamically
-    pubkeys[0] = npubHexString;
+    pubkeys[0] = npubHex;
     eventRequestOptions->p = pubkeys;
     eventRequestOptions->p_count = 1;
   }
@@ -217,9 +210,9 @@ void connectToNostrRelays() {
   nostrRelayManager.disconnect();
   Serial.println("Requesting Zap notifications");
 
-  // split relayString by comma into vector
+  // split relays by comma into vector
   std::vector<String> relays;
-  String relayStringCopy = String(relayString);
+  String relayStringCopy = relaysString;
   int commaIndex = relayStringCopy.indexOf(",");
   while (commaIndex != -1) {
     relays.push_back(relayStringCopy.substring(0, commaIndex));
@@ -283,9 +276,13 @@ void changeBrightness() {
   file.close();
 
   analogWrite(ledPin, lightBrightness);
-  // delay(250);
 }
 
+/**
+ * @brief Flash then fade out the LED
+ * 
+ * @param intensity 
+ */
 void fadeOutFlash(int intensity) {
   analogWrite(ledPin, intensity); // set the LED to the desired intensity
 
@@ -300,15 +297,16 @@ void fadeOutFlash(int intensity) {
   delay(50);
 }
 
+/**
+ * @brief Flash the LED
+ * 
+ * @param numberOfFlashes 
+ */
 void doLightningFlash(int numberOfFlashes) {
 
   Serial.println("Flashing " + String(numberOfFlashes) + " times");
 
-  // fadeOutFlash(5);
-  // fadeOutFlash(10);
-  // fadeOutFlash(15);
-
-  // // turn lamp off
+  // turn lamp off
   analogWrite(ledPin, lightBrightness / 3);
 
   delay(100);
@@ -337,17 +335,17 @@ void doLightningFlash(int numberOfFlashes) {
     delay(1);  // wait for a moment
   }
 
-  // delay(50);
-
-  // fadeOutFlash(15);
-  // fadeOutFlash(5);
-
   delay(250);
 
   // set led to brightness
   analogWrite(ledPin, lightBrightness);
 }
 
+/**
+ * @brief Add a zap amount to the flash queue
+ * 
+ * @param zapAmountSats 
+ */
 void flashLightning(int zapAmountSats) {
   int flashCount = 1;
   // set flash count length of the number in the zap amount
@@ -359,7 +357,6 @@ void flashLightning(int zapAmountSats) {
   xSemaphoreTake(zapMutex, portMAX_DELAY);
   zapAmountsFlashQueue.push_back(flashCount);
   xSemaphoreGive(zapMutex);
-
 }
 
 /**
@@ -377,7 +374,11 @@ void signalWithLightning(int numFlashes, int duration = 500) {
   }
 }
 
-
+/**
+ * @brief Get the Unix Timestamp 
+ * 
+ * @return unsigned long 
+ */
 unsigned long getUnixTimestamp() {
   time_t now;
   struct tm timeinfo;
@@ -393,6 +394,12 @@ unsigned long getUnixTimestamp() {
 
 String lastPayload = "";
 
+/**
+ * @brief Event callback for when a relay connects
+ * 
+ * @param key 
+ * @param message 
+ */
 void relayConnectedEvent(const std::string& key, const std::string& message) {
   socketDisconnectedCount = 0;
   Serial.println("Relay connected: ");
@@ -409,6 +416,12 @@ void relayConnectedEvent(const std::string& key, const std::string& message) {
   nostrRelayManager.broadcastEvent(serialisedEventRequest);
 }
 
+/**
+ * @brief Event callback for when a relay disconnects
+ * 
+ * @param key 
+ * @param message 
+ */
 void relayDisonnectedEvent(const std::string& key, const std::string& message) {
   Serial.println("Relay disconnected: ");
   socketDisconnectedCount++;
@@ -420,6 +433,12 @@ void relayDisonnectedEvent(const std::string& key, const std::string& message) {
   }
 }
 
+/**
+ * @brief Event callback for when a relay sends an OK event
+ * 
+ * @param key 
+ * @param payload 
+ */
 void okEvent(const std::string& key, const char* payload) {
     if(lastPayload != payload) { // Prevent duplicate events from multiple relays triggering the same logic
       lastPayload = payload;
@@ -428,18 +447,12 @@ void okEvent(const std::string& key, const char* payload) {
     }
 }
 
-void nip01Event(const std::string& key, const char* payload) {
-    if(lastPayload != payload) { // Prevent duplicate events from multiple relays triggering the same logic
-      lastPayload = payload;
-      // We can convert the payload to a StaticJsonDocument here and get the content
-      StaticJsonDocument<1024> eventJson;
-      deserializeJson(eventJson, payload);
-      String pubkey = eventJson[2]["pubkey"].as<String>();
-      String content = eventJson[2]["content"].as<String>();
-      Serial.println(pubkey + ": " + content);
-    }
-}
-
+/**
+ * @brief Get the Bolt11 Invoice From Event object
+ * 
+ * @param jsonStr 
+ * @return String 
+ */
 String getBolt11InvoiceFromEvent(String jsonStr) {
   // Remove all JSON formatting characters
   String str = jsonStr.substring(1, jsonStr.length()-1); // remove the first and last square brackets
@@ -514,13 +527,25 @@ int64_t getAmountInSatoshis(const String &input) {
     return satoshis;
 }
 
-
+/**
+ * @brief Get the Random Num object
+ * 
+ * @param min 
+ * @param max 
+ * @return uint16_t 
+ */
 uint16_t getRandomNum(uint16_t min, uint16_t max) {
   uint16_t rand  = (esp_random() % (max - min + 1)) + min;
   Serial.println("Random number: " + String(rand));
   return rand;
 }
 
+/**
+ * @brief Event callback for when a relay sends a zap receipt event
+ * 
+ * @param key 
+ * @param payload 
+ */
 void zapReceiptEvent(const std::string& key, const char* payload) {
     if(lastPayload != payload) { // Prevent duplicate events from multiple relays triggering the same logic, as we are using multiple relays, this is likely to happen
       lastPayload = payload;
@@ -532,6 +557,10 @@ void zapReceiptEvent(const std::string& key, const char* payload) {
     }
 }
 
+/**
+ * @brief Initialise the lamp
+ * 
+ */
 void initLamp() {
   // Set the LED pin as OUTPUT
   pinMode(ledPin, OUTPUT);
@@ -547,6 +576,11 @@ void initLamp() {
   lightBrightness = brightnessStr.toInt();
 }
 
+/**
+ * @brief Click a piezo buzzer if used
+ * 
+ * @param period 
+ */
 void click(int period)
 {
   if(!isBuzzerEnabled) {
@@ -565,8 +599,9 @@ void setup() {
   Serial.begin(115200);
   Serial.println("boot");
 
+  pinMode(buttonPin, INPUT_PULLUP); // Set the button pin as INPUT
   pinMode(BUZZER_PIN, OUTPUT); // Set the buzzer pin as an output.
-  click(225);
+  // click(225);
 
   FlashFS.begin(FORMAT_ON_FAIL);
   // init spiffs
@@ -575,21 +610,54 @@ void setup() {
     return;
   }
 
+  bool triggerConfig = false;
+  int timer = 0;
+  while (timer < 2000)
+  {
+    digitalWrite(2, HIGH);
+    Serial.println(touchRead(portalPin));
+    if (
+      touchRead(portalPin) < 60
+      ||
+      digitalRead(buttonPin) == LOW
+      )
+    {
+        triggerConfig = true;
+        timer = 5000;
+    }
+
+    timer = timer + 100;
+    delay(150);
+    digitalWrite(2, LOW);
+    delay(150);
+  }
+
+  readFiles(); // get the saved details and store in global variables
+
+  if(triggerConfig == true || ssid == "" || ssid == "null") {
+    Serial.println("Launch serial config");
+    configOverSerialPort();
+  }
+  else {
+    WiFi.begin(ssid.c_str(), wifiPassword.c_str());
+    Serial.print("Connecting to WiFi");
+    while (WiFi.status() != WL_CONNECTED) {
+      Serial.print(".");
+      delay(500);
+      digitalWrite(2, HIGH);
+      Serial.print(".");
+      delay(500);
+      digitalWrite(2, LOW);
+    }
+  }
+
   initLamp();
 
   zapMutex = xSemaphoreCreateMutex();
 
-  buttonPin = 4;
-  // Set the button pin as INPUT
-  pinMode(buttonPin, INPUT_PULLUP);
-
   randomSeed(analogRead(0)); // Seed the random number generator
 
-
-  // delay(500);
-  // signalWithLightning(2,250);
-
-    // start lamp control task
+  // start lamp control task
   xTaskCreatePinnedToCore(
     lampControlTask,   /* Task function. */
     "lampControlTask",     /* String with name of task. */
@@ -599,46 +667,109 @@ void setup() {
     NULL,             /* Task handle. */
     1);               /* Core where the task should run */
 
-  WiFi.onEvent(WiFiEvent);
-  init_WifiManager();
-
   createZapEventRequest();
 
-   if(hasInternetConnection) {
-    Serial.println("Has internet connection. Connectring to relays");
-    connectToNostrRelays();
-   }
+  Serial.println("Connected to WiFi and got an IP");
+  click(225);
+  delay(100);
+  click(225);
+  connectToNostrRelays();
 
   // Set the LED to the desired intensity
   analogWrite(ledPin, lightBrightness);
 
 }
 
+String getJsonValue(JsonDocument &doc, const char* name)
+{
+    for (JsonObject elem : doc.as<JsonArray>()) {
+        if (strcmp(elem["name"], name) == 0) {
+            String value = elem["value"].as<String>();
+            return value;
+        }
+    }
+    return "";  // return empty string if not found
+}
+/**
+ * @brief Read config from SPIFFS
+ * 
+ */
+void readFiles()
+{
+    File paramFile = FlashFS.open(PARAM_FILE, "r");
+    if (paramFile)
+    {
+        StaticJsonDocument<2500> doc;
+        DeserializationError error = deserializeJson(doc, paramFile.readString());
+        if(error){
+            Serial.print("deserializeJson() failed: ");
+            Serial.println(error.c_str());
+            return;
+        }
+        if(ssid == "null"){ // check ssid is not set above
+            ssid = getJsonValue(doc, "ssid");
+            Serial.println("");
+            Serial.println("ssid used from memory");
+            Serial.println("SSID: " + ssid);
+        }
+        else{
+            Serial.println("");
+            Serial.println("ssid hardcoded");
+            Serial.println("SSID: " + ssid);
+        }
+        if(wifiPassword == "null"){ // check wifiPassword is not set above
+            wifiPassword = getJsonValue(doc, "wifipassword");
+            Serial.println("");
+            Serial.println("ssid password used from memory");
+            Serial.println("SSID password: " + wifiPassword);
+        }
+        else{
+            Serial.println("");
+            Serial.println("ssid password hardcoded");
+            Serial.println("SSID password: " + wifiPassword);
+        }
+        if(npubHex == "null"){ // check nPubHex
+            npubHex = getJsonValue(doc, "npubHex");
+            Serial.println("");
+            Serial.println("npubHex used from memory");
+            Serial.println("npubHex: " + npubHex);
+        }
+        else{
+            Serial.println("");
+            Serial.println("npubHex hardcoded");
+            Serial.println("npubHex: " + npubHex);
+        }
+
+        if(relaysString == "null"){ // check relays
+            relaysString = getJsonValue(doc, "relays");
+            Serial.println("");
+            Serial.println("relays used from memory");
+            Serial.println("relays: " + relaysString);
+        }
+        else{
+            Serial.println("");
+            Serial.println("relays hardcoded");
+            Serial.println("relays: " + relaysString);
+        }
+    }
+    paramFile.close();
+}
+
 bool lastInternetConnectionCheckTime = 0;
 
 void loop() {
-  // fill the queue with some random zap amounts
+  // TESTING: fill the queue with some random zap amounts
   // for (int i = 0; i < 3; i++) {
   //   zapAmountsFlashQueue.push_back(getRandomNum(1,3));
   // }
   // delay(30000);
-  // send ping to Quad9 9.9.9.9 every 10 seconds to check for internet connection
   if (millis() - lastInternetConnectionCheckTime > 10000) {
     if(WiFi.status() == WL_CONNECTED) {
-      /* IPAddress ip(9,9,9,9);  // Quad9 DNS */
-      /* bool ret = Ping.ping(ip); */
-      /* if(ret) { */
-      /*   if(!lastInternetConnectionState) { */
-      /*     Serial.println("Internet connection has come back! :D"); */
-      /*     // reboot */
-      /*     ESP.restart(); */
-      /*   } */
         lastInternetConnectionState = true;
-      /* } else { */
-      /*    lastInternetConnectionState = false; */
-      /* } */
+      } else {
+        lastInternetConnectionState = false;
+      }
     }
-  }
 
   nostrRelayManager.loop();
   nostrRelayManager.broadcastEvents();
@@ -648,5 +779,4 @@ void loop() {
     Serial.println("Rebooting");
     ESP.restart();
   }
-
 }

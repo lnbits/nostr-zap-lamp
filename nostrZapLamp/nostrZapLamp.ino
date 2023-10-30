@@ -90,7 +90,6 @@ void initLamp();
 unsigned long getUnixTimestamp();
 void zapReceiptEvent(const std::string& key, const char* payload);
 void okEvent(const std::string& key, const char* payload);
-void nip01Event(const std::string& key, const char* payload);
 void relayConnectedEvent(const std::string& key, const std::string& message);
 void relayDisonnectedEvent(const std::string& key, const std::string& message);
 uint16_t getRandomNum(uint16_t min, uint16_t max);
@@ -276,6 +275,11 @@ void changeBrightness() {
   analogWrite(ledPin, lightBrightness);
 }
 
+/**
+ * @brief Flash then fade out the LED
+ * 
+ * @param intensity 
+ */
 void fadeOutFlash(int intensity) {
   analogWrite(ledPin, intensity); // set the LED to the desired intensity
 
@@ -290,6 +294,11 @@ void fadeOutFlash(int intensity) {
   delay(50);
 }
 
+/**
+ * @brief Flash the LED
+ * 
+ * @param numberOfFlashes 
+ */
 void doLightningFlash(int numberOfFlashes) {
 
   Serial.println("Flashing " + String(numberOfFlashes) + " times");
@@ -323,17 +332,17 @@ void doLightningFlash(int numberOfFlashes) {
     delay(1);  // wait for a moment
   }
 
-  // delay(50);
-
-  // fadeOutFlash(15);
-  // fadeOutFlash(5);
-
   delay(250);
 
   // set led to brightness
   analogWrite(ledPin, lightBrightness);
 }
 
+/**
+ * @brief Add a zap amount to the flash queue
+ * 
+ * @param zapAmountSats 
+ */
 void flashLightning(int zapAmountSats) {
   int flashCount = 1;
   // set flash count length of the number in the zap amount
@@ -345,7 +354,6 @@ void flashLightning(int zapAmountSats) {
   xSemaphoreTake(zapMutex, portMAX_DELAY);
   zapAmountsFlashQueue.push_back(flashCount);
   xSemaphoreGive(zapMutex);
-
 }
 
 /**
@@ -363,7 +371,11 @@ void signalWithLightning(int numFlashes, int duration = 500) {
   }
 }
 
-
+/**
+ * @brief Get the Unix Timestamp 
+ * 
+ * @return unsigned long 
+ */
 unsigned long getUnixTimestamp() {
   time_t now;
   struct tm timeinfo;
@@ -379,6 +391,12 @@ unsigned long getUnixTimestamp() {
 
 String lastPayload = "";
 
+/**
+ * @brief Event callback for when a relay connects
+ * 
+ * @param key 
+ * @param message 
+ */
 void relayConnectedEvent(const std::string& key, const std::string& message) {
   socketDisconnectedCount = 0;
   Serial.println("Relay connected: ");
@@ -395,6 +413,12 @@ void relayConnectedEvent(const std::string& key, const std::string& message) {
   nostrRelayManager.broadcastEvent(serialisedEventRequest);
 }
 
+/**
+ * @brief Event callback for when a relay disconnects
+ * 
+ * @param key 
+ * @param message 
+ */
 void relayDisonnectedEvent(const std::string& key, const std::string& message) {
   Serial.println("Relay disconnected: ");
   socketDisconnectedCount++;
@@ -406,6 +430,12 @@ void relayDisonnectedEvent(const std::string& key, const std::string& message) {
   }
 }
 
+/**
+ * @brief Event callback for when a relay sends an OK event
+ * 
+ * @param key 
+ * @param payload 
+ */
 void okEvent(const std::string& key, const char* payload) {
     if(lastPayload != payload) { // Prevent duplicate events from multiple relays triggering the same logic
       lastPayload = payload;
@@ -414,18 +444,12 @@ void okEvent(const std::string& key, const char* payload) {
     }
 }
 
-void nip01Event(const std::string& key, const char* payload) {
-    if(lastPayload != payload) { // Prevent duplicate events from multiple relays triggering the same logic
-      lastPayload = payload;
-      // We can convert the payload to a StaticJsonDocument here and get the content
-      StaticJsonDocument<1024> eventJson;
-      deserializeJson(eventJson, payload);
-      String pubkey = eventJson[2]["pubkey"].as<String>();
-      String content = eventJson[2]["content"].as<String>();
-      Serial.println(pubkey + ": " + content);
-    }
-}
-
+/**
+ * @brief Get the Bolt11 Invoice From Event object
+ * 
+ * @param jsonStr 
+ * @return String 
+ */
 String getBolt11InvoiceFromEvent(String jsonStr) {
   // Remove all JSON formatting characters
   String str = jsonStr.substring(1, jsonStr.length()-1); // remove the first and last square brackets
@@ -500,13 +524,25 @@ int64_t getAmountInSatoshis(const String &input) {
     return satoshis;
 }
 
-
+/**
+ * @brief Get the Random Num object
+ * 
+ * @param min 
+ * @param max 
+ * @return uint16_t 
+ */
 uint16_t getRandomNum(uint16_t min, uint16_t max) {
   uint16_t rand  = (esp_random() % (max - min + 1)) + min;
   Serial.println("Random number: " + String(rand));
   return rand;
 }
 
+/**
+ * @brief Event callback for when a relay sends a zap receipt event
+ * 
+ * @param key 
+ * @param payload 
+ */
 void zapReceiptEvent(const std::string& key, const char* payload) {
     if(lastPayload != payload) { // Prevent duplicate events from multiple relays triggering the same logic, as we are using multiple relays, this is likely to happen
       lastPayload = payload;
@@ -518,6 +554,10 @@ void zapReceiptEvent(const std::string& key, const char* payload) {
     }
 }
 
+/**
+ * @brief Initialise the lamp
+ * 
+ */
 void initLamp() {
   // Set the LED pin as OUTPUT
   pinMode(ledPin, OUTPUT);
@@ -533,6 +573,11 @@ void initLamp() {
   lightBrightness = brightnessStr.toInt();
 }
 
+/**
+ * @brief Click a piezo buzzer if used
+ * 
+ * @param period 
+ */
 void click(int period)
 {
   if(!isBuzzerEnabled) {
@@ -633,7 +678,10 @@ void setup() {
 
 }
 
-
+/**
+ * @brief Read config from SPIFFS
+ * 
+ */
 void readFiles()
 {
     File paramFile = FlashFS.open(PARAM_FILE, "r");

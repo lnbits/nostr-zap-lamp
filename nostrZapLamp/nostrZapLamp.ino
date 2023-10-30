@@ -1,4 +1,21 @@
 #include <Arduino.h>
+
+///////////////////////////////////////////////////////////////////////////////////
+//         Change these variables directly in the code or use the config         //
+//  form in the web-installer https://lnbits.github.io/nostr-zap-lamp/installer/  //
+///////////////////////////////////////////////////////////////////////////////////
+
+String version = "0.0.1";
+
+String ssid = "null"; // 'String ssid = "ssid";' / 'String ssid = "null";'
+String wifiPassword = "null"; // 'String wifiPassword = "password";' / 'String wifiPassword = "null";'
+String npubHex = "null";
+String relays = "null";
+
+///////////////////////////////////////////////////////////////////////////////////
+//                                 END of variables                              //
+///////////////////////////////////////////////////////////////////////////////////
+
 #include <WiFiClientSecure.h>
 #include <WebServer.h>
 #include "time.h"
@@ -22,8 +39,8 @@
 #define BUZZER_PIN 2      // Connect the piezo buzzer to this GPIO pin.
 #define CLICK_DURATION 20 // Duration in milliseconds.
 
-/* #define PARAM_FILE "/elements.json" */
-
+int buttonPin = 4;
+int portalPin = 2;
 int triggerAp = false;
 
 bool lastInternetConnectionState = true;
@@ -34,6 +51,8 @@ extern int buttonPin; // Pin number where the button is connected
 int minFlashDelay = 100; // Minimum delay between flashes (in milliseconds)
 int maxFlashDelay = 5000; // Maximum delay between flashes (in milliseconds)
 int lightBrightness = 50; // The brightness of the LED (0-255)
+
+bool forceConfig = false;
 
 SemaphoreHandle_t zapMutex;
 
@@ -54,11 +73,10 @@ bool hasSentEvent = false;
 
 bool isBuzzerEnabled = false;
 
-extern char npubHexString[80];
-extern char relayString[80];
-
 fs::SPIFFSFS &FlashFS = SPIFFS;
 #define FORMAT_ON_FAIL true
+#define PARAM_FILE "/elements.json"
+
 
 // define funcs
 void click(int period);
@@ -171,10 +189,10 @@ void createZapEventRequest() {
 
   // // Populate #p
   Serial.println("npubHexString is |" + String(npubHexString) + "|");
-  if(String(npubHexString) != "") {
+  if(npubHex != "") {
     Serial.println("npub is specified");
     String* pubkeys = new String[1];  // Allocate memory dynamically
-    pubkeys[0] = npubHexString;
+    pubkeys[0] = npubHex;
     eventRequestOptions->p = pubkeys;
     eventRequestOptions->p_count = 1;
   }
@@ -196,9 +214,9 @@ void connectToNostrRelays() {
   nostrRelayManager.disconnect();
   Serial.println("Requesting Zap notifications");
 
-  // split relayString by comma into vector
+  // split relays by comma into vector
   std::vector<String> relays;
-  String relayStringCopy = String(relayString);
+  String relayStringCopy = String(relays);
   int commaIndex = relayStringCopy.indexOf(",");
   while (commaIndex != -1) {
     relays.push_back(relayStringCopy.substring(0, commaIndex));
@@ -540,6 +558,7 @@ void setup() {
   Serial.begin(115200);
   Serial.println("boot");
 
+  pinMode(buttonPin, INPUT_PULLUP); // Set the button pin as INPUT
   pinMode(BUZZER_PIN, OUTPUT); // Set the buzzer pin as an output.
   click(225);
 
@@ -550,13 +569,50 @@ void setup() {
     return;
   }
 
+  bool triggerConfig = false;
+  int timer = 0;
+  while (timer < 2000)
+  {
+    digitalWrite(2, HIGH);
+    Serial.println(touchRead(portalPin));
+    if (
+      touchRead(portalPin) < 60
+      ||
+      digitalRead(buttonPin) == LOW
+      )
+    {
+        triggerConfig = true;
+        timer = 5000;
+    }
+
+    timer = timer + 100;
+    delay(150);
+    digitalWrite(2, LOW);
+    delay(150);
+  }
+
+  readFiles(); // get the saved details and store in global variables
+
+  if(triggerConfig == true || ssid == "" || ssid == "null") {
+    Serial.println("Launch serial config");
+    configOverSerialPort();
+  }
+  else {
+    WiFi.begin(ssid.c_str(), wifiPassword.c_str());
+    Serial.print("Connecting to WiFi");
+    while (WiFi.status() != WL_CONNECTED) {
+      Serial.print(".");
+      delay(500);
+      digitalWrite(2, HIGH);
+      Serial.print(".");
+      delay(500);
+      digitalWrite(2, LOW);
+    }
+  }
+
   initLamp();
 
   zapMutex = xSemaphoreCreateMutex();
-
-  buttonPin = 4;
-  // Set the button pin as INPUT
-  pinMode(buttonPin, INPUT_PULLUP);
 
   randomSeed(analogRead(0)); // Seed the random number generator
 
@@ -584,6 +640,68 @@ void setup() {
 
 }
 
+
+void readFiles()
+{
+    File paramFile = FlashFS.open(PARAM_FILE, "r");
+    if (paramFile)
+    {
+        StaticJsonDocument<2500> doc;
+        DeserializationError error = deserializeJson(doc, paramFile.readString());
+        if(error){
+            Serial.print("deserializeJson() failed: ");
+            Serial.println(error.c_str());
+            return;
+        }
+        if(ssid == "null"){ // check ssid is not set above
+            ssid = getJsonValue(doc, "ssid");
+            Serial.println("");
+            Serial.println("ssid used from memory");
+            Serial.println("SSID: " + ssid);
+        }
+        else{
+            Serial.println("");
+            Serial.println("ssid hardcoded");
+            Serial.println("SSID: " + ssid);
+        }
+        if(wifiPassword == "null"){ // check wifiPassword is not set above
+            wifiPassword = getJsonValue(doc, "wifipassword");
+            Serial.println("");
+            Serial.println("ssid password used from memory");
+            Serial.println("SSID password: " + wifiPassword);
+        }
+        else{
+            Serial.println("");
+            Serial.println("ssid password hardcoded");
+            Serial.println("SSID password: " + wifiPassword);
+        }
+        if(npubHex == "null"){ // check nPubHex
+            npubHex = getJsonValue(doc, "npubHex");
+            Serial.println("");
+            Serial.println("npubHex used from memory");
+            Serial.println("npubHex: " + npubHex);
+        }
+        else{
+            Serial.println("");
+            Serial.println("npubHex hardcoded");
+            Serial.println("npubHex: " + npubHex);
+        }
+
+        if(relays == "null"){ // check relays
+            relays = getJsonValue(doc, "relays");
+            Serial.println("");
+            Serial.println("relays used from memory");
+            Serial.println("relays: " + relays);
+        }
+        else{
+            Serial.println("");
+            Serial.println("relays hardcoded");
+            Serial.println("relays: " + relays);
+        }
+    }
+    paramFile.close();
+}
+
 bool lastInternetConnectionCheckTime = 0;
 
 void loop() {
@@ -599,7 +717,6 @@ void loop() {
         lastInternetConnectionState = false;
       }
     }
-  }
 
   nostrRelayManager.loop();
   nostrRelayManager.broadcastEvents();
@@ -609,5 +726,4 @@ void loop() {
     Serial.println("Rebooting");
     ESP.restart();
   }
-
 }

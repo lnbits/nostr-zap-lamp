@@ -43,15 +43,14 @@ jobs:
           tag: ${{ github.ref_name }}
         run: |
           sh build.sh
-          sh release.sh $tag
 
       - name: Create github release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
         run: |
-          gh release create "$tag" --generate-notes ./dist/$tag/bootloader.bin ./dist/$tag/boot_app0.bin \
-            ./dist/$tag/nostrZapLamp.ino.bin ./dist/$tag/nostrZapLamp.ino.partitions.bin
+          gh release create "$tag" --generate-notes ./dist/$tag/nostrZapLamp.ino.bootloader.bin \
+            ./build/nostrZapLamp.ino.bin ./build/nostrZapLamp.ino.partitions.bin
 
   pages:
     needs: [ release ]

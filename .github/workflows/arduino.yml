@@ -29,8 +29,10 @@ jobs:
             - nostrZapLamp
           cli-compile-flags: |
             - --warnings="none"
-            - --build-property "build.partitions=min_spiffs"
-            - --build-property "upload.maximum_size=1966080"
+            - --build-property
+            - build.partitions=min_spiffs
+            - --build-property
+            - upload.maximum_size=1966080
           libraries: |
             - name: WebSockets
             - name: ArduinoJson

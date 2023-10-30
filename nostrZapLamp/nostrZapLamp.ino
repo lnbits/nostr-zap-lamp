@@ -15,8 +15,7 @@ String relays = "null";
 ///////////////////////////////////////////////////////////////////////////////////
 
 #include <Arduino.h>
-#include <WiFiClientSecure.h>
-#include <WebServer.h>
+#include <WiFi.h>
 #include "time.h"
 #include <NostrEvent.h>
 #include <NostrRelayManager.h>

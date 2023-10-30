@@ -5,4 +5,4 @@ arduino-cli core update-index
 arduino-cli core install esp32:esp32
 arduino-cli upgrade
 arduino-cli lib install uBitcoin WebSockets ArduinoJson base64 Button WiFiManager Nostr # QRCode ESP32Ping
-arduino-cli compile --build-path build --fqbn esp32:esp32:esp32 --build-properties build.partitions=min_spiffs,upload.maximum_size=1966080 nostrZapLamp
+arduino-cli compile --build-path build --fqbn esp32:esp32:esp32 --build-property "build.partitions=min_spiffs" --build-property "upload.maximum_size=1966080" nostrZapLamp

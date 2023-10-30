@@ -1,5 +1,3 @@
-#include <Arduino.h>
-
 ///////////////////////////////////////////////////////////////////////////////////
 //         Change these variables directly in the code or use the config         //
 //  form in the web-installer https://lnbits.github.io/nostr-zap-lamp/installer/  //
@@ -16,6 +14,7 @@ String relays = "null";
 //                                 END of variables                              //
 ///////////////////////////////////////////////////////////////////////////////////
 
+#include <Arduino.h>
 #include <WiFiClientSecure.h>
 #include <WebServer.h>
 #include "time.h"
@@ -29,7 +28,6 @@ String relays = "null";
 #include <math.h>
 #include <SPIFFS.h>
 #include <vector>
-
 #include <ArduinoJson.h>
 
 // freertos
@@ -152,10 +150,6 @@ void lampControlTask(void *pvParameters) {
       if (zapAmountsFlashQueue.size() > 0) {
         //  get size of queue and serial print all elements in queue
         Serial.println("There are " + String(zapAmountsFlashQueue.size()) + " zap(s) in the queue");
-        // for (int i = 0; i < zapAmountsFlashQueue.size(); i++) {
-        //   Serial.print(String(zapAmountsFlashQueue[i]) + ", ");
-        // }
-        // Serial.println("");
         xSemaphoreTake(zapMutex, portMAX_DELAY);
         int zapAmount = zapAmountsFlashQueue[0];
         zapAmountsFlashQueue.erase(zapAmountsFlashQueue.begin());
@@ -280,7 +274,6 @@ void changeBrightness() {
   file.close();
 
   analogWrite(ledPin, lightBrightness);
-  // delay(250);
 }
 
 void fadeOutFlash(int intensity) {

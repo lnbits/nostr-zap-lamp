@@ -18,3 +18,7 @@ for version in $(jq -r '.versions[]' ./hardware-installer/src/versions.json); do
     wget $REPO/$version/$PROJECT_NAME.ino.partitions.bin
     mv $PROJECT_NAME.ino.partitions.bin $INSTALLER_PATH/$version
 done
+
+cd hardware-installer
+npm install
+vite build

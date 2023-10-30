@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <WebServer.h>
 #include "time.h"
 #include <NostrEvent.h>
@@ -9,13 +9,9 @@
 #include "Bitcoin.h"
 #include "Hash.h"
 #include <esp_random.h>
-/* #include "QRCode.h" */
 #include <math.h>
 #include <SPIFFS.h>
 #include <vector>
-/* #include <ESP32Ping.h> */
-
-#include "wManager.h"
 
 #include <ArduinoJson.h>
 
@@ -100,23 +96,6 @@ void IRAM_ATTR handleButtonInterrupt() {
     doubleTapDetected = true;
   }
   lastButtonPress = now;
-}
-
-// Define the WiFi event callback function
-void WiFiEvent(WiFiEvent_t event) {
-  switch(event) {
-    case SYSTEM_EVENT_STA_GOT_IP:
-      Serial.println("Connected to WiFi and got an IP");
-      click(225);
-      delay(100);
-      click(225);
-      connectToNostrRelays();
-      break;
-    case SYSTEM_EVENT_STA_DISCONNECTED:
-      Serial.println("Disconnected from WiFi");
-      // WiFi.begin(ssid, password); // Try to reconnect after getting disconnected
-      break;
-  }
 }
 
 //free rtos task for lamp control
@@ -304,11 +283,7 @@ void doLightningFlash(int numberOfFlashes) {
 
   Serial.println("Flashing " + String(numberOfFlashes) + " times");
 
-  // fadeOutFlash(5);
-  // fadeOutFlash(10);
-  // fadeOutFlash(15);
-
-  // // turn lamp off
+  // turn lamp off
   analogWrite(ledPin, lightBrightness / 3);
 
   delay(100);
@@ -585,11 +560,7 @@ void setup() {
 
   randomSeed(analogRead(0)); // Seed the random number generator
 
-
-  // delay(500);
-  // signalWithLightning(2,250);
-
-    // start lamp control task
+  // start lamp control task
   xTaskCreatePinnedToCore(
     lampControlTask,   /* Task function. */
     "lampControlTask",     /* String with name of task. */
@@ -599,15 +570,14 @@ void setup() {
     NULL,             /* Task handle. */
     1);               /* Core where the task should run */
 
-  WiFi.onEvent(WiFiEvent);
-  init_WifiManager();
-
   createZapEventRequest();
 
-   if(hasInternetConnection) {
-    Serial.println("Has internet connection. Connectring to relays");
-    connectToNostrRelays();
-   }
+  // TODO: Do this after wifi connection found
+  Serial.println("Connected to WiFi and got an IP");
+  click(225);
+  delay(100);
+  click(225);
+  connectToNostrRelays();
 
   // Set the LED to the desired intensity
   analogWrite(ledPin, lightBrightness);
@@ -622,21 +592,12 @@ void loop() {
   //   zapAmountsFlashQueue.push_back(getRandomNum(1,3));
   // }
   // delay(30000);
-  // send ping to Quad9 9.9.9.9 every 10 seconds to check for internet connection
   if (millis() - lastInternetConnectionCheckTime > 10000) {
     if(WiFi.status() == WL_CONNECTED) {
-      /* IPAddress ip(9,9,9,9);  // Quad9 DNS */
-      /* bool ret = Ping.ping(ip); */
-      /* if(ret) { */
-      /*   if(!lastInternetConnectionState) { */
-      /*     Serial.println("Internet connection has come back! :D"); */
-      /*     // reboot */
-      /*     ESP.restart(); */
-      /*   } */
         lastInternetConnectionState = true;
-      /* } else { */
-      /*    lastInternetConnectionState = false; */
-      /* } */
+      } else {
+        lastInternetConnectionState = false;
+      }
     }
   }
 

@@ -1,6 +1,8 @@
 {
   "devices": [
-      "esp32"
+    "esp32"
   ],
-  "versions": []
+  "versions": [
+    "v0.0.1"
+  ]
 }

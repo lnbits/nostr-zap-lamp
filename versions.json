@@ -1,4 +1,5 @@
 {
+  "name": "nostrZapLamp",
   "devices": [
     "esp32"
   ],

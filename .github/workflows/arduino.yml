@@ -27,6 +27,10 @@ jobs:
               source-url: https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
           sketch-paths: |
             - nostrZapLamp
+          cli-compile-flags: |
+            - --warnings="none"
+            - --build-property "build.partitions=min_spiffs"
+            - --build-property "upload.maximum_size=1966080"
           libraries: |
             - name: WebSockets
             - name: ArduinoJson
@@ -37,8 +41,6 @@ jobs:
             - name: Nostr
             # - name: QRCode
             # - name: ESP32Ping
-          cli-compile-flags: |
-            - --warnings="none"
 
       - uses: actions/upload-artifact@v2
         with:

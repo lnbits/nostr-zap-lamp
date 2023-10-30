@@ -1,6 +1,6 @@
 #!/bin/sh
 INSTALLER_PATH=./hardware-installer/src/firmware/esp32
-REPO=https://github.com/lnbits/bitcoinswitch/releases/download
+REPO=https://github.com/lnbits/nostr-zap-lamp/releases/download
 PROJECT_NAME=nostrZapLamp
 
 git clone https://github.com/lnbits/hardware-installer

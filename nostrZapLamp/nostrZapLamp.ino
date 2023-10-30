@@ -8,13 +8,12 @@ String version = "0.0.1";
 String ssid = "null"; // 'String ssid = "ssid";' / 'String ssid = "null";'
 String wifiPassword = "null"; // 'String wifiPassword = "password";' / 'String wifiPassword = "null";'
 String npubHex = "null";
-String relays = "null";
+String relaysString = "null";
 
 ///////////////////////////////////////////////////////////////////////////////////
 //                                 END of variables                              //
 ///////////////////////////////////////////////////////////////////////////////////
 
-#include <Arduino.h>
 #include <WiFi.h>
 #include "time.h"
 #include <NostrEvent.h>
@@ -35,6 +34,11 @@ String relays = "null";
 
 #define BUZZER_PIN 2      // Connect the piezo buzzer to this GPIO pin.
 #define CLICK_DURATION 20 // Duration in milliseconds.
+
+struct KeyValue {
+    String key;
+    String value;
+};
 
 int buttonPin = 4;
 int portalPin = 2;
@@ -180,7 +184,7 @@ void createZapEventRequest() {
   eventRequestOptions->kinds_count = sizeof(kinds) / sizeof(kinds[0]);
 
   // // Populate #p
-  Serial.println("npubHexString is |" + String(npubHexString) + "|");
+  Serial.println("npubHexString is |" + npubHex + "|");
   if(npubHex != "") {
     Serial.println("npub is specified");
     String* pubkeys = new String[1];  // Allocate memory dynamically
@@ -208,7 +212,7 @@ void connectToNostrRelays() {
 
   // split relays by comma into vector
   std::vector<String> relays;
-  String relayStringCopy = String(relays);
+  String relayStringCopy = relaysString;
   int commaIndex = relayStringCopy.indexOf(",");
   while (commaIndex != -1) {
     relays.push_back(relayStringCopy.substring(0, commaIndex));
@@ -597,7 +601,7 @@ void setup() {
 
   pinMode(buttonPin, INPUT_PULLUP); // Set the button pin as INPUT
   pinMode(BUZZER_PIN, OUTPUT); // Set the buzzer pin as an output.
-  click(225);
+  // click(225);
 
   FlashFS.begin(FORMAT_ON_FAIL);
   // init spiffs
@@ -665,7 +669,6 @@ void setup() {
 
   createZapEventRequest();
 
-  // TODO: Do this after wifi connection found
   Serial.println("Connected to WiFi and got an IP");
   click(225);
   delay(100);
@@ -677,6 +680,16 @@ void setup() {
 
 }
 
+String getJsonValue(JsonDocument &doc, const char* name)
+{
+    for (JsonObject elem : doc.as<JsonArray>()) {
+        if (strcmp(elem["name"], name) == 0) {
+            String value = elem["value"].as<String>();
+            return value;
+        }
+    }
+    return "";  // return empty string if not found
+}
 /**
  * @brief Read config from SPIFFS
  * 
@@ -727,16 +740,16 @@ void readFiles()
             Serial.println("npubHex: " + npubHex);
         }
 
-        if(relays == "null"){ // check relays
-            relays = getJsonValue(doc, "relays");
+        if(relaysString == "null"){ // check relays
+            relaysString = getJsonValue(doc, "relays");
             Serial.println("");
             Serial.println("relays used from memory");
-            Serial.println("relays: " + relays);
+            Serial.println("relays: " + relaysString);
         }
         else{
             Serial.println("");
             Serial.println("relays hardcoded");
-            Serial.println("relays: " + relays);
+            Serial.println("relays: " + relaysString);
         }
     }
     paramFile.close();
@@ -745,7 +758,7 @@ void readFiles()
 bool lastInternetConnectionCheckTime = 0;
 
 void loop() {
-  // fill the queue with some random zap amounts
+  // TESTING: fill the queue with some random zap amounts
   // for (int i = 0; i < 3; i++) {
   //   zapAmountsFlashQueue.push_back(getRandomNum(1,3));
   // }

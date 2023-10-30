@@ -9,11 +9,11 @@
 #include "Bitcoin.h"
 #include "Hash.h"
 #include <esp_random.h>
-#include "QRCode.h"
+/* #include "QRCode.h" */
 #include <math.h>
 #include <SPIFFS.h>
 #include <vector>
-#include <ESP32Ping.h>
+/* #include <ESP32Ping.h> */
 
 #include "wManager.h"
 
@@ -26,7 +26,7 @@
 #define BUZZER_PIN 2      // Connect the piezo buzzer to this GPIO pin.
 #define CLICK_DURATION 20 // Duration in milliseconds.
 
-#define PARAM_FILE "/elements.json"
+/* #define PARAM_FILE "/elements.json" */
 
 int triggerAp = false;
 
@@ -110,7 +110,7 @@ void WiFiEvent(WiFiEvent_t event) {
       click(225);
       delay(100);
       click(225);
-      connectToNostrRelays();      
+      connectToNostrRelays();
       break;
     case SYSTEM_EVENT_STA_DISCONNECTED:
       Serial.println("Disconnected from WiFi");
@@ -138,7 +138,7 @@ void lampControlTask(void *pvParameters) {
       }
     }
 
-    // detect double tap on button 
+    // detect double tap on button
     if (doubleTapDetected) {
       Serial.println("Double tap detected. REstarting");
       // restart device
@@ -180,7 +180,7 @@ void lampControlTask(void *pvParameters) {
 
 /**
  * @brief Create a Zap Event Request object
- * 
+ *
  */
 void createZapEventRequest() {
   // Create the REQ
@@ -210,7 +210,7 @@ void createZapEventRequest() {
 
 /**
  * @brief Connect to the Nostr relays
- * 
+ *
  */
 void connectToNostrRelays() {
   // first disconnect from all relays
@@ -250,7 +250,7 @@ void connectToNostrRelays() {
 bool adjustLightingBrightnessUp = true;
 /**
  * @brief change lamp brightness
- * 
+ *
  */
 void changeBrightness() {
   // use lastLightingAdjustmentWasUp and max value of 255 to decide whether to adjust up or down
@@ -272,7 +272,7 @@ void changeBrightness() {
       delay(500); // pause to let the user take their finger off the button
     }
   }
-  
+
   // write to spiffs
   File file = SPIFFS.open("/brightness.txt", FILE_WRITE);
   if(!file){
@@ -364,8 +364,8 @@ void flashLightning(int zapAmountSats) {
 
 /**
  * @brief Flash the LED a random number of times with a random delay between flashes
- * 
- * @param numFlashes 
+ *
+ * @param numFlashes
  */
 void signalWithLightning(int numFlashes, int duration = 500) {
   for (int i = 0; i < numFlashes; i++) {
@@ -402,7 +402,7 @@ void relayConnectedEvent(const std::string& key, const std::string& message) {
   click(225);
   delay(100);
   click(225);
-  
+
   Serial.print(F("Requesting events:"));
   Serial.println(serialisedEventRequest);
 
@@ -463,9 +463,9 @@ String getBolt11InvoiceFromEvent(String jsonStr) {
 
 /**
  * @brief Get the Amount In Satoshis from a lightning bol11 invoice
- * 
- * @param input 
- * @return int64_t 
+ *
+ * @param input
+ * @return int64_t
  */
 int64_t getAmountInSatoshis(const String &input) {
     int64_t number = -1;
@@ -625,18 +625,18 @@ void loop() {
   // send ping to Quad9 9.9.9.9 every 10 seconds to check for internet connection
   if (millis() - lastInternetConnectionCheckTime > 10000) {
     if(WiFi.status() == WL_CONNECTED) {
-      IPAddress ip(9,9,9,9);  // Quad9 DNS
-      bool ret = Ping.ping(ip);
-      if(ret) {
-        if(!lastInternetConnectionState) {
-          Serial.println("Internet connection has come back! :D");
-          // reboot
-          ESP.restart();
-        }
+      /* IPAddress ip(9,9,9,9);  // Quad9 DNS */
+      /* bool ret = Ping.ping(ip); */
+      /* if(ret) { */
+      /*   if(!lastInternetConnectionState) { */
+      /*     Serial.println("Internet connection has come back! :D"); */
+      /*     // reboot */
+      /*     ESP.restart(); */
+      /*   } */
         lastInternetConnectionState = true;
-      } else {
-        lastInternetConnectionState = false;
-      }
+      /* } else { */
+      /*    lastInternetConnectionState = false; */
+      /* } */
     }
   }
 

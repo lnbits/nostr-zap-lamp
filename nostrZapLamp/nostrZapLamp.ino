@@ -51,7 +51,7 @@ int ledPin = 13; // Pin number where the LED is connected
 extern int buttonPin; // Pin number where the button is connected
 int minFlashDelay = 100; // Minimum delay between flashes (in milliseconds)
 int maxFlashDelay = 5000; // Maximum delay between flashes (in milliseconds)
-int lightBrightness = 50; // The brightness of the LED (0-255)
+int lightBrightness = 20; // The brightness of the LED (0-255)
 
 bool forceConfig = false;
 

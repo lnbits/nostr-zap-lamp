@@ -769,13 +769,6 @@ void loop() {
   //   zapAmountsFlashQueue.push_back(getRandomNum(1,3));
   // }
   // delay(30000);
-  // if (millis() - lastInternetConnectionCheckTime > 10000) {
-  //   if(WiFi.status() == WL_CONNECTED) {
-  //       lastInternetConnectionState = true;
-  //     } else {
-  //       lastInternetConnectionState = false;
-  //     }
-  //   }
 
   nostrRelayManager.loop();
   nostrRelayManager.broadcastEvents();

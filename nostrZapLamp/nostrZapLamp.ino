@@ -516,7 +516,6 @@ int64_t getAmountInSatoshis(const String &input) {
  */
 uint16_t getRandomNum(uint16_t min, uint16_t max) {
   uint16_t rand  = (esp_random() % (max - min + 1)) + min;
-  Serial.println("Random number: " + String(rand));
   return rand;
 }
 

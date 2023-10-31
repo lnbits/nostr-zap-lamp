@@ -618,7 +618,8 @@ void setup() {
   bool triggerConfig = false;
   int timer = 0;
 
-  Serial.println("Should we trigger web serial config?");
+  Serial.println("Should we put the device into web serial configuration mode?");
+  Serial.println("To trigger config mode, touch pin (GPIO " + String(portalPin) + ") or hold the button (GPIO " + String(buttonPin) + ") and reset the device.");
   Serial.println("Touch pin (GPIO " + String(portalPin) + ") value is " + String(touchRead(portalPin)));
   Serial.println("Button pin (GPIO " + String(buttonPin) + ") value is " + String(digitalRead(buttonPin)));
 
@@ -635,10 +636,10 @@ void setup() {
         timer = 5000;
     }
 
-    timer = timer + 100;
     delay(150);
     analogWrite(ledPin, 0);
     delay(150);
+    timer = timer + 300;
   }
 
   readFiles(); // get the saved details and store in global variables

@@ -656,7 +656,7 @@ void setup() {
     while (WiFi.status() != WL_CONNECTED && wifiConnectTimer < 15000) {
       delay(100);
       Serial.print(".");
-      wifiConnectTimer = wifiConnectTimer + 500;
+      wifiConnectTimer = wifiConnectTimer + 100;
       hasInternetConnection = false;
     }
     if(WiFi.status() == WL_CONNECTED) {

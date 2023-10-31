@@ -51,7 +51,7 @@ int ledPin = 13; // Pin number where the LED is connected
 extern int buttonPin; // Pin number where the button is connected
 int minFlashDelay = 100; // Minimum delay between flashes (in milliseconds)
 int maxFlashDelay = 5000; // Maximum delay between flashes (in milliseconds)
-int lightBrightness = 50; // The brightness of the LED (0-255)
+int lightBrightness = 20; // The brightness of the LED (0-255)
 
 bool forceConfig = false;
 
@@ -66,7 +66,7 @@ NostrQueueProcessor nostrQueue;
 
 String serialisedEventRequest;
 
-extern bool hasInternetConnection;
+bool hasInternetConnection = false;
 
 NostrRequestOptions* eventRequestOptions;
 
@@ -88,7 +88,6 @@ void changeBrightness();
 void signalWithLightning(int numFlashes, int duration);
 void flashLightning(int zapAmountSats);
 void doLightningFlash(int numberOfFlashes);
-void fadeOutFlash(int intensity);
 void initLamp();
 unsigned long getUnixTimestamp();
 void zapReceiptEvent(const std::string& key, const char* payload);
@@ -143,7 +142,7 @@ void lampControlTask(void *pvParameters) {
     }
 
     // watch for button press and call changeBrightness
-    if (digitalRead(buttonPin) == LOW) {
+    if (digitalRead(buttonPin) == LOW && hasInternetConnection) {
       Serial.println("Button pressed. Changing brightness");
       changeBrightness();
     } else {
@@ -276,25 +275,6 @@ void changeBrightness() {
   file.close();
 
   analogWrite(ledPin, lightBrightness);
-}
-
-/**
- * @brief Flash then fade out the LED
- * 
- * @param intensity 
- */
-void fadeOutFlash(int intensity) {
-  analogWrite(ledPin, intensity); // set the LED to the desired intensity
-
-  delay(50); // delay to give the LED time to light up
-
-  // fast fade-out
-  for (int i = intensity; i >= 0; i--) {
-    analogWrite(ledPin, i); // set the LED brightness
-    delay(1);  // wait for a moment
-  }
-
-  delay(50);
 }
 
 /**
@@ -548,11 +528,23 @@ uint16_t getRandomNum(uint16_t min, uint16_t max) {
  */
 void zapReceiptEvent(const std::string& key, const char* payload) {
     if(lastPayload != payload) { // Prevent duplicate events from multiple relays triggering the same logic, as we are using multiple relays, this is likely to happen
+      // define an array of phrases to use when a zap is a received
+      String zapPhrases[] = {
+        "Zap!",
+        "A zap happened! ",
+        "The zappenning!",
+        "Zap! Zap!",
+        "Pew pew!",
+        "Zap! Zap! Zap!"
+      };
+
       lastPayload = payload;
       String bolt11 = getBolt11InvoiceFromEvent(payload);
       // Serial.println("BOLT11: " + bolt11);
       uint64_t amountInSatoshis = getAmountInSatoshis(bolt11);
-      Serial.println("Zapped! " + String(amountInSatoshis));
+      // Choose a random phrase from the array
+      int randomPhraseIndex = getRandomNum(0, sizeof(zapPhrases) / sizeof(zapPhrases[0]) - 1);
+      Serial.println(zapPhrases[randomPhraseIndex] + " " + String(amountInSatoshis) + " sats");
       flashLightning(amountInSatoshis);
     }
 }
@@ -574,6 +566,16 @@ void initLamp() {
   String brightnessStr = file.readStringUntil('\n');
   file.close();
   lightBrightness = brightnessStr.toInt();
+
+  // start lamp control task
+  xTaskCreatePinnedToCore(
+    lampControlTask,   /* Task function. */
+    "lampControlTask",     /* String with name of task. */
+    5000,            /* Stack size in bytes. */
+    NULL,             /* Parameter passed as input of the task */
+    2,                /* Priority of the task. */
+    NULL,             /* Task handle. */
+    1);               /* Core where the task should run */
 }
 
 /**
@@ -600,8 +602,10 @@ void setup() {
   Serial.println("boot");
 
   pinMode(buttonPin, INPUT_PULLUP); // Set the button pin as INPUT
-  pinMode(BUZZER_PIN, OUTPUT); // Set the buzzer pin as an output.
-  // click(225);
+  if(isBuzzerEnabled) {
+    pinMode(BUZZER_PIN, OUTPUT); // Set the buzzer pin as an output.
+    click(225);
+  }
 
   FlashFS.begin(FORMAT_ON_FAIL);
   // init spiffs
@@ -610,14 +614,18 @@ void setup() {
     return;
   }
 
+  initLamp();
+
   bool triggerConfig = false;
   int timer = 0;
+
+  Serial.println("Should we trigger web serial config?");
+  Serial.println("Touch pin (GPIO " + String(portalPin) + ") value is " + String(touchRead(portalPin)));
+  Serial.println("Button pin (GPIO " + String(buttonPin) + ") value is " + String(digitalRead(buttonPin)));
+
   while (timer < 2000)
   {
-    digitalWrite(ledPin, HIGH);
-    
-    Serial.println("Portal pin value is " + String(touchRead(portalPin)));
-    Serial.println("Button pin is" + String(digitalRead(buttonPin)));
+    analogWrite(ledPin, 255);
     if (
       touchRead(portalPin) < 60
       ||
@@ -630,44 +638,40 @@ void setup() {
 
     timer = timer + 100;
     delay(150);
-    digitalWrite(ledPin, LOW);
+    analogWrite(ledPin, 0);
     delay(150);
   }
 
   readFiles(); // get the saved details and store in global variables
 
   if(triggerConfig == true || config_ssid == "" || config_ssid == "null") {
-    Serial.println("Launch serial config");
     configOverSerialPort();
+    hasInternetConnection = false;
   }
   else {
     WiFi.begin(config_ssid.c_str(), config_wifi_password.c_str());
     Serial.print("Connecting to WiFi");
-    while (WiFi.status() != WL_CONNECTED) {
+    // connect for max of 15 seconds
+    int wifiConnectTimer = 0;
+    while (WiFi.status() != WL_CONNECTED && wifiConnectTimer < 15000) {
+      delay(100);
       Serial.print(".");
-      delay(500);
-      digitalWrite(2, HIGH);
-      Serial.print(".");
-      delay(500);
-      digitalWrite(2, LOW);
+      wifiConnectTimer = wifiConnectTimer + 500;
+      hasInternetConnection = false;
     }
-  }
+    if(WiFi.status() == WL_CONNECTED) {
+      hasInternetConnection = true;
+    }
+    else {
+      hasInternetConnection = false;
+      configOverSerialPort();
+    }
 
-  initLamp();
+  }
 
   zapMutex = xSemaphoreCreateMutex();
 
   randomSeed(analogRead(0)); // Seed the random number generator
-
-  // start lamp control task
-  xTaskCreatePinnedToCore(
-    lampControlTask,   /* Task function. */
-    "lampControlTask",     /* String with name of task. */
-    5000,            /* Stack size in bytes. */
-    NULL,             /* Parameter passed as input of the task */
-    2,                /* Priority of the task. */
-    NULL,             /* Task handle. */
-    1);               /* Core where the task should run */
 
   createZapEventRequest();
 
@@ -765,13 +769,6 @@ void loop() {
   //   zapAmountsFlashQueue.push_back(getRandomNum(1,3));
   // }
   // delay(30000);
-  if (millis() - lastInternetConnectionCheckTime > 10000) {
-    if(WiFi.status() == WL_CONNECTED) {
-        lastInternetConnectionState = true;
-      } else {
-        lastInternetConnectionState = false;
-      }
-    }
 
   nostrRelayManager.loop();
   nostrRelayManager.broadcastEvents();

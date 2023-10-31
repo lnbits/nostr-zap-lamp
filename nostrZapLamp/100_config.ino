@@ -1,4 +1,5 @@
 void configOverSerialPort() {
+  Serial.println("Launching configOverSerialPort");
   executeConfig();
 }
 

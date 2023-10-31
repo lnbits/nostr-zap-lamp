@@ -72,7 +72,7 @@ NostrRequestOptions* eventRequestOptions;
 
 bool hasSentEvent = false;
 
-bool isBuzzerEnabled = true;
+bool isBuzzerEnabled = false;
 
 fs::SPIFFSFS &FlashFS = SPIFFS;
 #define FORMAT_ON_FAIL true
@@ -142,7 +142,7 @@ void lampControlTask(void *pvParameters) {
     }
 
     // watch for button press and call changeBrightness
-    if (digitalRead(buttonPin) == LOW) {
+    if (digitalRead(buttonPin) == LOW && hasInternetConnection) {
       Serial.println("Button pressed. Changing brightness");
       changeBrightness();
     } else {
@@ -606,12 +606,14 @@ void setup() {
 
   bool triggerConfig = false;
   int timer = 0;
+
+  Serial.println("Should we trigger web serial config?");
+  Serial.println("Touch pin (GPIO " + String(portalPin) + ") value is " + String(touchRead(portalPin)));
+  Serial.println("Button pin (GPIO " + String(buttonPin) + ") value is " + String(digitalRead(buttonPin)));
+
   while (timer < 2000)
   {
     analogWrite(ledPin, 255);
-    
-    Serial.println("Portal pin value is " + String(touchRead(portalPin)));
-    Serial.println("Button pin is" + String(digitalRead(buttonPin)));
     if (
       touchRead(portalPin) < 60
       ||
@@ -631,17 +633,16 @@ void setup() {
   readFiles(); // get the saved details and store in global variables
 
   if(triggerConfig == true || config_ssid == "" || config_ssid == "null") {
-    Serial.println("Launch serial config");
     configOverSerialPort();
     hasInternetConnection = false;
   }
   else {
     WiFi.begin(config_ssid.c_str(), config_wifi_password.c_str());
     Serial.print("Connecting to WiFi");
-    // connect for max of 3 seconds
+    // connect for max of 15 seconds
     int wifiConnectTimer = 0;
-    while (WiFi.status() != WL_CONNECTED && wifiConnectTimer < 3000) {
-      delay(500);
+    while (WiFi.status() != WL_CONNECTED && wifiConnectTimer < 15000) {
+      delay(100);
       Serial.print(".");
       wifiConnectTimer = wifiConnectTimer + 500;
       hasInternetConnection = false;
@@ -752,17 +753,17 @@ bool lastInternetConnectionCheckTime = 0;
 
 void loop() {
   // TESTING: fill the queue with some random zap amounts
-  for (int i = 0; i < 3; i++) {
-    zapAmountsFlashQueue.push_back(getRandomNum(1,3));
-  }
-  delay(30000);
-  if (millis() - lastInternetConnectionCheckTime > 10000) {
-    if(WiFi.status() == WL_CONNECTED) {
-        lastInternetConnectionState = true;
-      } else {
-        lastInternetConnectionState = false;
-      }
-    }
+  // for (int i = 0; i < 3; i++) {
+  //   zapAmountsFlashQueue.push_back(getRandomNum(1,3));
+  // }
+  // delay(30000);
+  // if (millis() - lastInternetConnectionCheckTime > 10000) {
+  //   if(WiFi.status() == WL_CONNECTED) {
+  //       lastInternetConnectionState = true;
+  //     } else {
+  //       lastInternetConnectionState = false;
+  //     }
+  //   }
 
   nostrRelayManager.loop();
   nostrRelayManager.broadcastEvents();

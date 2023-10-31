@@ -1,8 +1,8 @@
 # Nostr Zap Lamp
 
-![](img/lamp.jpg)
+![](https://github.com/lnbits/nostr-zap-lamp/raw/main/img/lamp.jpg)
 
-Get a visual Zap! when someone zaps your or anyone on Nostr. 
+Get a visual Zap! when someone zaps your or anyone on Nostr.
 
 The Nostr Zap Lamp flashes when a relay broadcasts a Nostr event of kind 9735. You can set the lamp to flash zaps sent to a specific npub, or any npub on nostr.
 
@@ -21,7 +21,7 @@ The number of flashes corresponds to the number of digits in the number of sats 
 + [LED "Neon" lamp](https://www.amazon.co.uk/YIVIYAR-Lightning-Battery-Bedroom-Christmas/dp/B08K4SCVKQ)
 + An ESP32 dev board
 + USB cable
-+ A momentary switch push button - For example https://www.amazon.com/Momentary-Spring-Return-Self-Return-Pushbutton-Switches/dp/B09DJY5Y5L 
++ A momentary switch push button - For example https://www.amazon.com/Momentary-Spring-Return-Self-Return-Pushbutton-Switches/dp/B09DJY5Y5L
 + Four jumper cables
 + Block connectors
 + A case. [This repo includes files for a 3D printed case](enclosure)

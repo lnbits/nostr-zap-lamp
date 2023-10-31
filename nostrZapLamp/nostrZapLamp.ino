@@ -528,11 +528,23 @@ uint16_t getRandomNum(uint16_t min, uint16_t max) {
  */
 void zapReceiptEvent(const std::string& key, const char* payload) {
     if(lastPayload != payload) { // Prevent duplicate events from multiple relays triggering the same logic, as we are using multiple relays, this is likely to happen
+      // define an array of phrases to use when a zap is a received
+      String zapPhrases[] = {
+        "Zap!",
+        "A zap happened! ",
+        "The zappenning!",
+        "Zap! Zap!",
+        "Pew pew!",
+        "Zap! Zap! Zap!"
+      };
+
       lastPayload = payload;
       String bolt11 = getBolt11InvoiceFromEvent(payload);
       // Serial.println("BOLT11: " + bolt11);
       uint64_t amountInSatoshis = getAmountInSatoshis(bolt11);
-      Serial.println("Zapped! " + String(amountInSatoshis));
+      // Choose a random phrase from the array
+      int randomPhraseIndex = getRandomNum(0, sizeof(zapPhrases) / sizeof(zapPhrases[0]) - 1);
+      Serial.println(zapPhrases[randomPhraseIndex] + " " + String(amountInSatoshis) + " sats");
       flashLightning(amountInSatoshis);
     }
 }

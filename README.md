@@ -49,8 +49,8 @@ The number of flashes corresponds to the number of digits in the number of sats 
         - base64
         - WiFiManager
         - Nostr
-    - Open the https://nostrZapLamp.ino file in the Arduino IDE
+    - Open the nostrZapLamp.ino file in the Arduino IDE
     - Select the ESP32 Dev Module board and the correct port
     - Compile and upload the firmware
-    - Use the web installer at nostr-zap-lamp.lnbits.com/ to configure the device
+    - Use the web installer at https://nostr-zap-lamp.lnbits.com/ to configure the device
         

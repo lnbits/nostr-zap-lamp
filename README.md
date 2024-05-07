@@ -26,6 +26,14 @@ The number of flashes corresponds to the number of digits in the number of sats 
 + Block connectors
 + A case. [This repo includes files for a 3D printed case](enclosure)
 
+## Wiring
+ESP32 GND <==========================> Relay "DC-"
+ESP32 5V <==========================> Relay "DC+"
+LED POS <===========================> Relay "DC+"
+ESP32 GND <=========================> Relay "COM"
+LED GND <===========================> Relay "NO"
+GPIO 13 <===========================> Relay "S"
+
 ## Build Instructions
 
 + Identify the positive and negative leads of the lamp. Tie a knot in the +ve lead for future identification

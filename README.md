@@ -28,10 +28,15 @@ The number of flashes corresponds to the number of digits in the number of sats 
 
 ## Wiring
 ESP32 GND <==========================> Relay "DC-"
+
 ESP32 5V <==========================> Relay "DC+"
+
 LED POS <===========================> Relay "DC+"
+
 ESP32 GND <=========================> Relay "COM"
+
 LED GND <===========================> Relay "NO"
+
 GPIO 13 <===========================> Relay "S"
 
 ## Build Instructions

@@ -1,5 +1,5 @@
 void configOverSerialPort() {
-  Serial.println("Launching configOverSerialPort");
+  Serial.println("Putting device into web serial configration mode.");
   executeConfig();
 }
 

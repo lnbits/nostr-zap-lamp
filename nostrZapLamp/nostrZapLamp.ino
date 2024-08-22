@@ -10,6 +10,7 @@ String config_wifi_password = "null"; // 'String config_wifi_password = "passwor
 String config_pubkey = "null";
 String config_relay = "null";
 
+int onDuration = 10000;
 ///////////////////////////////////////////////////////////////////////////////////
 //                                 END of variables                              //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -285,7 +286,7 @@ void changeBrightness() {
 void doLightningFlash(int numberOfFlashes) {
 
   analogWrite(ledPin, 255);
-  delay(5000);
+  delay(onDuration);
   analogWrite(ledPin, 0);
 }
 

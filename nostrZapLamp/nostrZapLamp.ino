@@ -10,6 +10,7 @@ String config_wifi_password = "null"; // 'String config_wifi_password = "passwor
 String config_pubkey = "null";
 String config_relay = "null";
 
+int onDuration = 10000;
 ///////////////////////////////////////////////////////////////////////////////////
 //                                 END of variables                              //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -284,41 +285,9 @@ void changeBrightness() {
  */
 void doLightningFlash(int numberOfFlashes) {
 
-  Serial.println("Flashing " + String(numberOfFlashes) + " times");
-
-  // turn lamp off
-  analogWrite(ledPin, lightBrightness / 3);
-
-  delay(100);
-
-  for(int flash = 1; flash <= numberOfFlashes; flash++) {
-    // turn the LED on
-    analogWrite(ledPin, 255);
-
-    // wait for the specified time, longer for the first flash and shorter for subsequent flashes
-    // int flashDuration = 250 / flash * random(1,5);
-    int flashDuration = 250;
-    delay(250);
-
-    // fast fade-out
-    for (int i = 255; i >= lightBrightness / 3; i = i - 2) {
-      analogWrite(ledPin, i);  // set the LED brightness
-      delay(1);  // wait for a moment
-    }
-    // analogWrite(ledPin, lightBrightness / 3);
-    delay(250);
-  }
-
-  // fade from lightBrightness / 3 to lightBrightness
-  for (int i = lightBrightness / 3; i <= lightBrightness; i = i + 1) {
-    analogWrite(ledPin, i); // set the LED brightness
-    delay(1);  // wait for a moment
-  }
-
-  delay(250);
-
-  // set led to brightness
-  analogWrite(ledPin, lightBrightness);
+  analogWrite(ledPin, 255);
+  delay(onDuration);
+  analogWrite(ledPin, 0);
 }
 
 /**

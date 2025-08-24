@@ -1,11 +1,11 @@
 export const addressesAndFiles = [
   {
     address: "0x1000",
-    fileName: "nostrZapLamp.ino.bootloader.bin",
+    fileName: "bootloader.bin",
   },
   {
     address: "0x8000",
-    fileName: "nostrZapLamp.ino.partitions.bin",
+    fileName: "partitions.bin",
   },
   {
     address: "0xE000",
@@ -13,12 +13,17 @@ export const addressesAndFiles = [
   },
   {
     address: "0x10000",
-    fileName: "nostrZapLamp.ino.bin",
+    fileName: "main.bin",
   },
 ];
 
 export const configPath = "elements.json";
+
 export const elements = [
+  {
+    type: "heading",
+    label: "WiFi Settings",
+  },
   {
     name: "config_ssid",
     value: "",
@@ -30,6 +35,10 @@ export const elements = [
     value: "",
     label: "WiFi Password",
     type: "text",
+  },
+  {
+    type: "heading",
+    label: "Nostr",
   },
   {
     name: "config_relay",

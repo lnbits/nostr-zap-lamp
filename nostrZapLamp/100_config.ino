@@ -1,4 +1,3 @@
-// do not change the version manually or move the #define it will be replaced during release
 #define VERSION "v0.0.0"
 #define NAME "NostrZapLamp"
 
